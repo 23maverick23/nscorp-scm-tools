@@ -21,8 +21,8 @@
 // @grant        GM.setValue
 // @grant        GM_registerMenuCommand
 // @run-at       document-idle
-// @downloadURL  https://gist.github.com/23maverick23/e4620860f60d692ad387f9bb622bab36
-// @updateURL    https://gist.github.com/23maverick23/e4620860f60d692ad387f9bb622bab36
+// @downloadURL  https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
+// @updateURL    https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
 // ==/UserScript==
 
 /* globals $, jQuery */
