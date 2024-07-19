@@ -1,8 +1,9 @@
 // ==UserScript==
-// @name         SCR Mgr Assistant
+// @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
-// @version      2.1.0
-// @description  Adds custom buttons to reassign SC Requests quickly.
+// @copyright    Copyright © 2024 by Ryan Morrissey
+// @version      2.1.1
+// @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&custparam_record_id=*
@@ -23,6 +24,7 @@
 // @run-at       document-idle
 // @downloadURL  https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
 // @updateURL    https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
+// @supportURL   https://github.com/23maverick23/nscorp-scm-tools/issues
 // ==/UserScript==
 
 /* globals $, jQuery */
@@ -448,9 +450,9 @@
         var btnMenuProducts = /* syntax: html */ `
             <div class="item">
                 <div class="ui tiny buttons">
-                    <button class="ui orange button" id="_xvertprodemg" data-tooltip="Cross-vert for Emg PR" data-position="bottom right">PR Emg</button>
+                    <button class="ui orange button" id="_xvertprodemg">PR Emg</button>
                     <div class="or"></div>
-                    <button class="ui orange button" id="_xvertprodupm" data-tooltip="Cross-vert for Upm PR" data-position="bottom right">PR Upm</button>
+                    <button class="ui orange button" id="_xvertprodupm">PR Upm</button>
                 </div>
             </div>
             `
@@ -459,9 +461,9 @@
         var btnMenuGB = /* syntax: html */ `
             <div class="item">
                 <div class="ui tiny buttons">
-                    <button class="ui blue button" id="_xvertgbwest" data-tooltip="Cross-vert for GBW" data-position="bottom right">GB West</button>
+                    <button class="ui blue button" id="_xvertgbwest">GB West</button>
                     <div class="or"></div>
-                    <button class="ui blue button" id="_xvertgbeast" data-tooltip="Cross-vert for GBE" data-position="bottom right">GB East</button>
+                    <button class="ui blue button" id="_xvertgbeast">GB East</button>
                 </div>
             </div>
             `
@@ -470,7 +472,7 @@
         var btnMenuHT = /* syntax: html */ `
             <div class="item">
                 <div class="ui tiny buttons">
-                    <button class="ui green button" id="_xvertht" data-tooltip="Cross-vert for High Tech" data-position="bottom right">High Tech</button>
+                    <button class="ui green button" id="_xvertht">High Tech</button>
                 </div>
             </div>
             `
@@ -479,7 +481,7 @@
         var btnMenuEPM = /* syntax: html */ `
             <div class="item">
                 <div class="ui tiny buttons">
-                    <button class="ui teal button" id="_xvertepm" data-tooltip="Cross-vert for EPM" data-position="bottom right">EPM</button>
+                    <button class="ui teal button" id="_xvertepm">EPM</button>
                 </div>
             </div>
             `
@@ -506,6 +508,29 @@
             `
         ;
 
+        var legendTemplatePR = /* syntax: html */ `<div class='item'> <i class='orange stop icon'></i> <div class='content'> <div class='header'>Product Emerging</div> <div class='description'>lauren, #emg</div> </div> </div> <div class='item'> <i class='orange stop icon'></i> <div class='content'> <div class='header'>Product Upmarket</div> <div class='description'>robyn</div> </div> </div>`;
+        var legendTemplateGB = /* syntax: html */ `<div class='item'> <i class='blue stop icon'></i> <div class='content'> <div class='header'>GB West</div> <div class='description'>rebecca</div> </div> </div> <div class='item'> <i class='blue stop icon'></i> <div class='content'> <div class='header'>GB East</div> <div class='description'>karl</div> </div> </div>`;
+        var legendTemplateHT = /* syntax: html */ `<div class='item'> <i class='green stop icon'></i> <div class='content'> <div class='header'>High Tech, Tiger</div> <div class='description'>jeff</div> </div> </div>`;
+        var legendTemplateEPM = /* syntax: html */ `<div class='item'> <i class='teal stop icon'></i> <div class='content'> <div class='header'>EPM</div> <div class='description'>jason</div> </div> </div>`;
+
+        var legendBtnTemplate = /* syntax: html */ `
+            <div class='ui list'>
+                ${
+                    (settings.showPR === true) ? `${legendTemplatePR}` : ""
+                }
+                ${
+                    (settings.showGB === true) ? `${legendTemplateGB}` : ""
+                }
+                ${
+                    (settings.showHT === true) ? `${legendTemplateHT}` : ""
+                }
+                ${
+                    (settings.showEPM === true) ? `${legendTemplateEPM}` : ""
+                }
+            </div>
+            `
+        ;
+
         var btnMenu = /* syntax: html */ `
             <!-- SC Mgr Assistant -->
             <div class="ui menu" id="sc-mgr-assistant">
@@ -529,6 +554,11 @@
                     <button class="ui tiny pink labeled icon button" id="_staffmyteam" data-tooltip="Open quick staff form" data-position="bottom right">
                         <i class="users cog icon"></i>
                         My Team
+                    </button>
+                </div>
+                <div class="item">
+                    <button class="ui tiny grey icon button" id="_legend" data-position="right center" data-html="${legendBtnTemplate}">
+                        <i class="question icon"></i>
                     </button>
                 </div>
                 <div class="right menu">
@@ -1356,6 +1386,11 @@
         /**
          * DOM MANIPULATION
          */
+        $("#_legend").click(
+            function(event) {
+                event.preventDefault();
+            }
+        );
         $("#_debug").click(
             function(event) {
                 event.preventDefault();
@@ -1441,6 +1476,10 @@
 
         $('.ui.checkbox')
             .checkbox()
+        ;
+
+        $('#_legend')
+            .popup()
         ;
 
         $('.ui.selection.dropdown')
