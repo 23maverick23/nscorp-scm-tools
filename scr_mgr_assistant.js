@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.1
+// @version      2.1.2
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -508,25 +508,99 @@
             `
         ;
 
-        var legendTemplatePR = /* syntax: html */ `<div class='item'> <i class='orange stop icon'></i> <div class='content'> <div class='header'>Product Emerging</div> <div class='description'>lauren, #emg</div> </div> </div> <div class='item'> <i class='orange stop icon'></i> <div class='content'> <div class='header'>Product Upmarket</div> <div class='description'>robyn</div> </div> </div>`;
-        var legendTemplateGB = /* syntax: html */ `<div class='item'> <i class='blue stop icon'></i> <div class='content'> <div class='header'>GB West</div> <div class='description'>rebecca</div> </div> </div> <div class='item'> <i class='blue stop icon'></i> <div class='content'> <div class='header'>GB East</div> <div class='description'>karl</div> </div> </div>`;
-        var legendTemplateHT = /* syntax: html */ `<div class='item'> <i class='green stop icon'></i> <div class='content'> <div class='header'>High Tech, Tiger</div> <div class='description'>jeff</div> </div> </div>`;
-        var legendTemplateEPM = /* syntax: html */ `<div class='item'> <i class='teal stop icon'></i> <div class='content'> <div class='header'>EPM</div> <div class='description'>jason</div> </div> </div>`;
+        var legendTemplatePR = /* syntax: html */ `
+            <div class='item'>
+                <i class='orange stop icon'></i>
+                <div class='content'>
+                    <div class='header'>Product Emerging</div>
+                    <div class='description'>assigned to lauren, hashtag #emg</div>
+                </div>
+            </div>
+            <div class='item'>
+                <i class='orange stop icon'></i>
+                <div class='content'>
+                    <div class='header'>Product Upmarket</div>
+                    <div class='description'>assigned to robyn</div>
+                </div>
+            </div>
+            `
+        ;
+        var legendTemplateGB = /* syntax: html */ `
+            <div class='item'>
+                <i class='blue stop icon'></i>
+                <div class='content'>
+                    <div class='header'>GB West</div>
+                    <div class='description'>assigned to rebecca</div>
+                </div>
+            </div>
+            <div class='item'>
+                <i class='blue stop icon'></i>
+                <div class='content'>
+                    <div class='header'>GB East</div>
+                    <div class='description'>assigned to karl</div>
+                </div>
+            </div>
+            `
+        ;
+        var legendTemplateHT = /* syntax: html */ `
+            <div class='item'>
+                <i class='green stop icon'></i>
+                <div class='content'>
+                    <div class='header'>High Tech, Tiger</div>
+                    <div class='description'>assigned to jeff</div>
+                </div>
+            </div>
+            `
+        ;
+        var legendTemplateEPM = /* syntax: html */ `
+            <div class='item'>
+                <i class='teal stop icon'></i>
+                <div class='content'>
+                    <div class='header'>EPM</div><div
+                    class='description'>assigned to jason</div>
+                </div>
+            </div>
+            `
+        ;
 
         var legendBtnTemplate = /* syntax: html */ `
-            <div class='ui list'>
-                ${
-                    (settings.showPR === true) ? `${legendTemplatePR}` : ""
-                }
-                ${
-                    (settings.showGB === true) ? `${legendTemplateGB}` : ""
-                }
-                ${
-                    (settings.showHT === true) ? `${legendTemplateHT}` : ""
-                }
-                ${
-                    (settings.showEPM === true) ? `${legendTemplateEPM}` : ""
-                }
+            <div class='header'>Toolbar Legend</div>
+            <div class='content'>
+                <div class='ui small list'>
+                    ${
+                        (settings.showPR === true) ? `${legendTemplatePR}` : ""
+                    }
+                    ${
+                        (settings.showGB === true) ? `${legendTemplateGB}` : ""
+                    }
+                    ${
+                        (settings.showHT === true) ? `${legendTemplateHT}` : ""
+                    }
+                    ${
+                        (settings.showEPM === true) ? `${legendTemplateEPM}` : ""
+                    }
+                    <div class='item'>
+                        <i class='yellow stop icon'></i>
+                        <div class='content'>
+                            <div class='header'>On Hold</div>
+                            <div class='description'>assign to myself, status on hold</div>
+                        </div>
+                    </div>
+                    <div class='item'>
+                        <i class='red stop icon'></i>
+                        <div class='content'>
+                            <div class='header'>Cancel Request</div>
+                            <div class='description'>both statuses cancelled, lead is false</div>
+                        </div>
+                    </div>
+                    <div class='item'>
+                        <i class='black stop icon'></i>
+                        <div class='content'>
+                            <div class='header'>Settings</div>
+                            <div class='description'>change toolbar preferences</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             `
         ;
@@ -557,7 +631,7 @@
                     </button>
                 </div>
                 <div class="item">
-                    <button class="ui tiny grey icon button" id="_legend" data-position="right center" data-html="${legendBtnTemplate}">
+                    <button class="ui tiny grey icon button" id="_legend" data-variation="small wide" data-position="right center" data-html="${legendBtnTemplate}">
                         <i class="question icon"></i>
                     </button>
                 </div>
