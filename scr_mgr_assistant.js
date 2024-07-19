@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.3
+// @version      2.1.4
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -1204,7 +1204,8 @@
 
             GM_SuperValue.set('people_cache', _peopleCache);
             GM_SuperValue.set('people_cache_ts', _peopleCacheTs);
-
+            var cacheDate = new Date(_peopleCacheTs);
+            gmc.set('cacheDateTime', cacheDate);
             shout('People Cache Refreshed');
         }
 
