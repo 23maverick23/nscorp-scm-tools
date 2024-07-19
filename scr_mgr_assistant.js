@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.2
+// @version      2.1.3
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -133,14 +133,22 @@
             'default': 'false'
         },
         'forceRefreshCache': {
-            'label': 'Force refresh cache',
+            'label': 'Force cache refresh',
             'type': 'checkbox',
             'save': false,
             'default': false
+        },
+        'cacheDateTime': {
+            'label': 'Date/time of last cache refresh',
+            'type': 'text',
+            'size': 50,
+            'title': 'This is for information purposes only.',
+            'default': '',
+            'save': false
         }
     };
 
-    const CACHE_DURATION_MS = 86400000; // 24 hours
+    const CACHE_DURATION_MS = 21600000; // duration in milliseconds, currently 6 hours
 
     var shout = function() {
         var context = "SC Mgr Assistant >> ";
@@ -169,7 +177,7 @@
             'frame': frame,
             'events': {
                 'save': function(values) {
-                    if (values['forceRefreshCache']) {
+                    if (values.forceRefreshCache) {
                         GM_SuperValue.set('people_cache', '');
                         GM_SuperValue.set('people_cache_ts', '');
                     }
@@ -230,6 +238,9 @@
         $('#scrMgrAssistantConfig_saveBtn').attr('class', 'ui green button'); // remove default class for buttons
         $('#scrMgrAssistantConfig_closeBtn').attr('class', 'ui black button').html('Dismiss'); // remove default class for buttons
 
+        $('#scrMgrAssistantConfig_cacheDateTime_var').attr('class', 'disabled field'); // make field disabled
+        $('#scrMgrAssistantConfig_field_cacheDateTime').attr('readonly', ''); // make cache date/time field read-only
+
     }
 
     function closeSettingsModal() {
@@ -249,6 +260,13 @@
     GM_registerMenuCommand('SCR Mgr Assistant Settings', openConfig);
 
     function onInit() {
+
+        var cacheTime = GM_SuperValue.get('people_cache_ts');
+        if (cacheTime) {
+            var cacheDate = new Date(cacheTime);
+            gmc.set('cacheDateTime', cacheDate);
+            shout('Cache date/time = ' + cacheDate.toString());
+        }
 
         waitForKeyElements("#scr-modal-request-form", (element) => {
             doReloadForm();
@@ -412,6 +430,7 @@
             overrideForm      : gmc.get('overrideForm'),
             showDebug         : gmc.get('showDebug'),
             forceRefreshCache : gmc.get('forceRefreshCache'),
+            cacheDateTime     : gmc.get('cacheDateTime'),
             hashtags          : gmc.get('hashtags')
         };
 
@@ -1149,10 +1168,8 @@
                     var _diffTs = _currentTs - getCacheTs;
 
                     if (_diffTs >= CACHE_DURATION_MS) {
-                        // cache is older than 2 hours, refresh cache
+                        // cache is older than threshold, refresh cache
                         refreshCache();
-                    } else {
-                        shout('People Cache < 2 hrs old');
                     }
 
                 } else {
