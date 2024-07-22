@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.4
+// @version      2.1.5
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -28,7 +28,7 @@
 // ==/UserScript==
 
 /* globals $, jQuery */
-/* globals GM_config, , GM_SuperValue, waitForKeyElements */
+/* globals GM_config, GM_SuperValue, waitForKeyElements */
 /* globals nlapiSearchRecord, nlapiGetFieldValue, nlapiSetFieldValue, nlapiGetFieldValues, nlapiSetFieldValues, nlapiGetUser, nlobjSearchFilter, nlobjSearchColumn, nlapiStringToDate */
 (function() {
     'use strict';
@@ -46,6 +46,7 @@
     */
 
     var $ = jQuery.noConflict(true);
+    // window.onbeforeunload = () => {};
 
     let configFieldDefs = {
         'theme': {
@@ -149,7 +150,11 @@
     };
 
     const CACHE_DURATION_MS = 21600000; // duration in milliseconds, currently 6 hours
+    const SCRIPT_VERSION = GM_info.script.version;
 
+    function checkVersion() {
+
+    }
     var shout = function() {
         var context = "SC Mgr Assistant >> ";
         return Function.prototype.bind.call(console.log, console, context);
@@ -168,10 +173,12 @@
     const configCss = /* syntax: css */ ``
     ;
 
+    var configTitle = `SCR Mgr Assistant (v${SCRIPT_VERSION})`;
+
     let gmc = new GM_config(
         {
             'id': 'scrMgrAssistantConfig',
-            'title': 'SCR Mgr Assistant Settings',
+            'title': configTitle,
             'fields': configFieldDefs,
             'css': configCss,
             'frame': frame,
@@ -181,7 +188,9 @@
                         GM_SuperValue.set('people_cache', '');
                         GM_SuperValue.set('people_cache_ts', '');
                     }
-                    alert('SC Mgr Assistant >> Refresh the page for changes to settings to take effect.');
+
+                    if (confirm('SC Mgr Assistant: The page will now refresh for changes to take effect.')) { location.reload(); }
+
                     let config = this;
                     this.close();
                 },
@@ -649,7 +658,7 @@
             <div class="ui menu" id="sc-mgr-assistant">
                 <div class="header item">
                     <i class="big colored ${settings.theme} life ring icon"></i>
-                    Assistant
+                    Assistant (v${SCRIPT_VERSION})
                 </div>
                 ${
                     (settings.showPR === true) ? `${btnMenuProducts}` : ""
