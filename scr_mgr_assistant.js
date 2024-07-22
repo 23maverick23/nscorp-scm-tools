@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.4
+// @version      2.1.3
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -532,7 +532,7 @@
                 <i class='orange stop icon'></i>
                 <div class='content'>
                     <div class='header'>Product Emerging</div>
-                    <div class='description'>assigned to lauren, hashtag #emg</div>
+                    <div class='description'>assigned to lauren</div>
                 </div>
             </div>
             <div class='item'>
@@ -581,6 +581,15 @@
             </div>
             `
         ;
+        var legendTemplateEMG = /* syntax: html */ `
+            <div class='item'>
+                <i class='grey hashtag icon'></i>
+                <div class='content'>
+                    <div class='description'>for Emerging queue, add #emg to hashtags</div>
+                </div>
+            </div>
+            `
+        ;
 
         var legendBtnTemplate = /* syntax: html */ `
             <div class='header'>Toolbar Legend</div>
@@ -598,6 +607,17 @@
                     ${
                         (settings.showEPM === true) ? `${legendTemplateEPM}` : ""
                     }
+                </div>
+
+                <div class='ui divider'></div>
+
+                <div class='ui small list'>
+                    ${legendTemplateEMG}
+                </div>
+
+                <div class='ui divider'></div>
+
+                <div class='ui small list'>
                     <div class='item'>
                         <i class='yellow stop icon'></i>
                         <div class='content'>
@@ -1204,8 +1224,7 @@
 
             GM_SuperValue.set('people_cache', _peopleCache);
             GM_SuperValue.set('people_cache_ts', _peopleCacheTs);
-            var cacheDate = new Date(_peopleCacheTs);
-            gmc.set('cacheDateTime', cacheDate);
+
             shout('People Cache Refreshed');
         }
 
