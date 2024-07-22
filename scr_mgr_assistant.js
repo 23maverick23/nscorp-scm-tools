@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.5
+// @version      2.1.6
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -1072,7 +1072,11 @@
         // nsBtnBar.children('td').append('<td></td>');
         // $('#main_form table table').children('tbody').eq(1).append(btnMenu);
         // $('#sc-mgr-assistant-col').attr('colspan', nsBtnBarCnt);
-        $('.uir-page-title-secondline').append(btnMenu);
+
+        let pageTitle = $('.uir-page-title-secondline');
+        let pageTitleNew = $('.uir-page-title');
+        (pageTitle.length !== 0) ? pageTitle.append(btnMenu) : pageTitleNew.append(btnMenu);
+
 
         /**
          * SUITESCRIPT FUNCTIONS
