@@ -177,7 +177,7 @@
 
     let gmc = new GM_config(
         {
-            'id': 'scrMgrAssistantConfig',
+            'id': 'assistant_config',
             'title': configTitle,
             'fields': configFieldDefs,
             'css': configCss,
@@ -212,43 +212,43 @@
             .modal('show')
         ;
 
-        $('#scrMgrAssistantConfig').attr('style', ''); // remove default form styling
+        $('#assistant_config').attr('style', ''); // remove default form styling
 
-        $('#scrMgrAssistantConfig_header').attr('class', 'ui center aligned large header'); // remove default header styling
+        $('#assistant_config_header').attr('class', 'ui center aligned large header'); // remove default header styling
 
-        $('#scrMgrAssistantConfig .section_header.center').attr('class', 'ui header'); // remove default section header styling
+        $('#assistant_config .section_header.center').attr('class', 'ui header'); // remove default section header styling
 
-        $('#scrMgrAssistantConfig .section_desc.center').attr('class', 'grey sub header'); // remove default section subheader styling
+        $('#assistant_config .section_desc.center').attr('class', 'grey sub header'); // remove default section subheader styling
 
-        $('[id^=scrMgrAssistantConfig_section_desc]').each(function() {
-            $(this).siblings("[id^=scrMgrAssistantConfig_section_header]").append(this);
+        $('[id^=assistant_config_section_desc]').each(function() {
+            $(this).siblings("[id^=assistant_config_section_header]").append(this);
         });
 
-        $('#scrMgrAssistantConfig .section_header_holder').attr('class', 'ui segment'); // remove default section styling
+        $('#assistant_config .section_header_holder').attr('class', 'ui segment'); // remove default section styling
 
-        $('#scrMgrAssistantConfig label').attr('class', ''); // remove default label styling
+        $('#assistant_config label').attr('class', ''); // remove default label styling
 
-        $('#scrMgrAssistantConfig select')
+        $('#assistant_config select')
             .attr('class', 'ui fluid selection dropdown') // remove default class for select
             .parent().closest('div')
             .attr('class', 'inline field') // remove default class for select
         ;
 
-        $('#scrMgrAssistantConfig select').dropdown({clearable: true}); // convert select to fancy
+        $('#assistant_config select').dropdown({clearable: true}); // convert select to fancy
 
-        $('#scrMgrAssistantConfig input:checkbox')
+        $('#assistant_config input:checkbox')
             .attr('class', 'hidden') // remove default class for checkbox
             .parent().closest('div')
             .attr('class', 'ui toggle checkbox') // remove default class for checkbox
             .wrap('<div class="inline field"></div>')
         ;
-        $('#scrMgrAssistantConfig input:checkbox').parent().closest('div').checkbox(); // convert checkbox to fancy
+        $('#assistant_config input:checkbox').parent().closest('div').checkbox(); // convert checkbox to fancy
 
-        $('#scrMgrAssistantConfig_saveBtn').attr('class', 'ui green button'); // remove default class for buttons
-        $('#scrMgrAssistantConfig_closeBtn').attr('class', 'ui black button').html('Dismiss'); // remove default class for buttons
+        $('#assistant_config_saveBtn').attr('class', 'ui green button'); // remove default class for buttons
+        $('#assistant_config_closeBtn').attr('class', 'ui black button').html('Dismiss'); // remove default class for buttons
 
-        $('#scrMgrAssistantConfig_cacheDateTime_var').attr('class', 'disabled field'); // make field disabled
-        $('#scrMgrAssistantConfig_field_cacheDateTime').attr('readonly', ''); // make cache date/time field read-only
+        $('#assistant_config_cacheDateTime_var').attr('class', 'disabled field'); // make field disabled
+        $('#assistant_config_field_cacheDateTime').attr('readonly', ''); // make cache date/time field read-only
 
     }
 
@@ -269,6 +269,14 @@
     GM_registerMenuCommand('SCR Mgr Assistant Settings', openConfig);
 
     function onInit() {
+        // one-time fix for config storage key...
+        var versionCheck = SCRIPT_VERSION.localeCompare("2.1.6", undefined, { numeric: true, sensitivity: 'base' });
+        // 1 = ahead, 0 = same, -1 = behind
+        if (versionCheck < 0) {
+            var tmpConfig = GM_SuperValue.get('scrMgrAssistantConfig');
+            GM_SuperValue.set('assistant_config', tmpConfig);
+            GM_deleteValue('scrMgrAssistantConfig');
+        }
 
         var cacheTime = GM_SuperValue.get('people_cache_ts');
         if (cacheTime) {
@@ -1651,7 +1659,7 @@
                 clearable: false,
                 showOnFocus: false,
                 placeholder: 'Choose an SC',
-                fullTextSearch: true,
+                fullTextSearch: 'exact',
                 name: 'solutionconsultant',
                 values: scValues,
                 match: 'text',
