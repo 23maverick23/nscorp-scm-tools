@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.6
+// @version      2.1.7
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -486,9 +486,9 @@
         var btnMenuProducts = /* syntax: html */ `
             <div class="item">
                 <div class="ui tiny buttons">
-                    <button class="ui orange button" id="_xvertprodemg">PR Emg</button>
+                    <button class="ui orange button" id="_xvertprodwest">PR West</button>
                     <div class="or"></div>
-                    <button class="ui orange button" id="_xvertprodupm">PR Upm</button>
+                    <button class="ui orange button" id="_xvertprodeast">PR East</button>
                 </div>
             </div>
             `
@@ -548,15 +548,15 @@
             <div class='item'>
                 <i class='orange stop icon'></i>
                 <div class='content'>
-                    <div class='header'>Product Emerging</div>
-                    <div class='description'>assigned to lauren</div>
+                    <div class='header'>Products West</div>
+                    <div class='description'>assigned to robyn</div>
                 </div>
             </div>
             <div class='item'>
                 <i class='orange stop icon'></i>
                 <div class='content'>
-                    <div class='header'>Product Upmarket</div>
-                    <div class='description'>assigned to robyn</div>
+                    <div class='header'>Products East</div>
+                    <div class='description'>assigned to lauren</div>
                 </div>
             </div>
             `
@@ -565,14 +565,14 @@
             <div class='item'>
                 <i class='blue stop icon'></i>
                 <div class='content'>
-                    <div class='header'>GB West</div>
+                    <div class='header'>General Business West</div>
                     <div class='description'>assigned to rebecca</div>
                 </div>
             </div>
             <div class='item'>
                 <i class='blue stop icon'></i>
                 <div class='content'>
-                    <div class='header'>GB East</div>
+                    <div class='header'>General Business East</div>
                     <div class='description'>assigned to karl</div>
                 </div>
             </div>
@@ -1324,32 +1324,32 @@
         }
 
         function setAssigneeJeff() {
-            // assignee = Jeff Underdahl
+            // assignee = Jeff
             nlapiSetFieldValue('custrecord_screq_assignee', _ids.jeff, true);
         }
 
         function setAssigneeKarl() {
-            // assignee = Karl Eberhardt
+            // assignee = Karl
             nlapiSetFieldValue('custrecord_screq_assignee', _ids.karl, true);
         }
 
         function setAssigneeRebecca() {
-            // assignee = Rebecca VanHousen
+            // assignee = Rebecca
             nlapiSetFieldValue('custrecord_screq_assignee', _ids.rebecca, true);
         }
 
         function setAssigneeRobyn() {
-            // assignee = Robyn Reed
+            // assignee = Robyn
             nlapiSetFieldValue('custrecord_screq_assignee', _ids.robyn, true);
         }
 
         function setAssigneeLauren() {
-            // assignee = Lauren Casey
+            // assignee = Lauren
             nlapiSetFieldValue('custrecord_screq_assignee', _ids.lauren, true);
         }
 
         function setAssigneeJason() {
-            // assignee = Jason Wells (EPM)
+            // assignee = Jason (EPM)
             nlapiSetFieldValue('custrecord_screq_assignee', _ids.jason, true);
         }
 
@@ -1459,37 +1459,36 @@
             shout('Set status to On Hold, and Assigned To to myself.')
         }
 
-        function setRecordProductsEmg() {
-            // button action - move to Products
+        function setRecordProductsEast() {
+            // button action - move to Products East
             setStatusRequested();
             setAssigneeLauren();
             setXvert();
-            setEmg();
-            shout('Set to xvr and emg, and Assigned To Lauren Casey.')
+            shout('Set to xvr, and Assigned To Lauren.')
         }
 
-        function setRecordProductsUpm() {
-            // button action - move to Products
+        function setRecordProductsWest() {
+            // button action - move to Products West
             setStatusRequested();
             setAssigneeRobyn();
             setXvert();
-            shout('Set to xvr, and Assigned To Robyn Reed.')
+            shout('Set to xvr, and Assigned To Robyn.')
         }
 
         function setRecordGBEast() {
-            // button action - move to GB
+            // button action - move to GB East
             setStatusRequested();
             setAssigneeKarl();
             setXvert();
-            shout('Set to xvr, and Assigned To Karl Eberhardt.')
+            shout('Set to xvr, and Assigned To Karl.')
         }
 
         function setRecordGBWest() {
-            // button action - move to GB
+            // button action - move to GB West
             setStatusRequested();
             setAssigneeRebecca();
             setXvert();
-            shout('Set to xvr, and Assigned To Rebecca VanHousen.')
+            shout('Set to xvr, and Assigned To Rebecca.')
         }
 
         function setRecordHT() {
@@ -1497,7 +1496,7 @@
             setStatusRequested();
             setAssigneeJeff();
             setXvert();
-            shout('Set to xvr, and Assigned to Jeff Underdahl.');
+            shout('Set to xvr, and Assigned to Jeff.');
         }
 
         function setRecordEPM() {
@@ -1505,7 +1504,7 @@
             setStatusRequested();
             setAssigneeJason();
             setXvert();
-            shout('Set to xvr, and Assigned to Jason Wells.');
+            shout('Set to xvr, and Assigned to Jason.');
         }
 
         function openRequestModal() {
@@ -1547,16 +1546,16 @@
                 setRecordHold();
             }
         );
-        $("#_xvertprodemg").click(
+        $("#_xvertprodwest").click(
             function(event) {
                 event.preventDefault();
-                setRecordProductsEmg();
+                setRecordProductsWest();
             }
         );
-        $("#_xvertprodupm").click(
+        $("#_xvertprodeast").click(
             function(event) {
                 event.preventDefault();
-                setRecordProductsUpm();
+                setRecordProductsEast();
             }
         );
         $("#_xvertgbwest").click(
