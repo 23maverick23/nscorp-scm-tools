@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar
 // @namespace    https://ryancmorrissey.com/
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.7
+// @version      2.1.8
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @author       Ryan Morrissey (https://github.com/23maverick23)
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
@@ -1425,8 +1425,8 @@
             var hashtagFld = nlapiGetFieldValue('custrecord_screq_hashtags');
 
             // test for value first
-            var reg = /(#xvr[|,]?)/;
-            if (!reg.test(hashtagFld)) {
+            const regex = new RegExp('(#xvr[|,]?)', 'gi');
+            if (!regex.test(hashtagFld)) {
                 nlapiSetFieldValue('custrecord_screq_hashtags', tag + hashtagFld, true);
             }
             nlapiSetFieldValue('custrecord_screq_cross_vertical', 'T', true);
@@ -1439,11 +1439,10 @@
             var hashtagFld = nlapiGetFieldValue('custrecord_screq_hashtags');
 
             // test for value first
-            var reg = /(#emg[|,]?)/;
-            if (!reg.test(hashtagFld)) {
+            const regex = new RegExp('(#emg[|,]?)', 'gi')
+            if (!regex.test(hashtagFld)) {
                 nlapiSetFieldValue('custrecord_screq_hashtags', tag + hashtagFld, true);
             }
-            nlapiSetFieldValue('custrecord_screq_hashtags', tag + hashtagFld, true);
         }
 
         function setRecordCancelled() {
