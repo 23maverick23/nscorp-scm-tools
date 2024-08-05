@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.0.2
+// @version      3.0.3
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -98,49 +98,49 @@ var shout = function() {
         'showGB': {
             'label': 'Show General Business cross-vertical button',
             'type': 'checkbox',
-            'default': 'true',
+            'default': true,
             'section': ['Buttons', 'Enable/disable specific buttons in the assistant bar.']
         },
         'showPR': {
             'label': 'Show Products cross-vertical button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showHT': {
             'label': 'Show High Tech / Tiger cross-vertical button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showEPM': {
             'label': 'Show EPM cross-vertical button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showCancel': {
             'label': 'Show Cancel button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showHold': {
             'label': 'Show On Hold button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'filterMe': {
             'label': 'Filter "Assigned To" using: SC Manager = Me',
             'type': 'checkbox',
-            'default': 'true',
+            'default': true,
             'section': ['Filters', 'Set filters for the Assign To field (filters are additive).']
         },
         'filterVertical': {
             'label': 'Filter "Assigned To" using: SC Vertical = My Vertical',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'filterTier': {
             'label': 'Filter "Assigned To" using: SC Tier = My Tier',
             'type': 'checkbox',
-            'default': 'false'
+            'default': false
         },
         'filterDirector': {
             'label': 'Filter "Assigned To" using: SC Director = <name|none>',
@@ -164,8 +164,13 @@ var shout = function() {
         'showDebug': {
             'label': 'Show Debug button in assistant bar',
             'type': 'checkbox',
-            'default': 'false',
+            'default': false,
             'section': ['Experimental Settings', 'Only change these if you know what you\'re doing.']
+        },
+         'includeAvailability': {
+            'label': 'Include SC availability & workload data in dropdown',
+            'type': 'checkbox',
+            'default': false
         },
         'forceRefreshCache': {
             'label': 'Force cache refresh',
@@ -529,10 +534,13 @@ var shout = function() {
                 let template = `
                     <div class="list">
                         <div class="item">
-                            <div class="right floated content">
-                                <div class="header" style="font-weight:bold;text-align:right;">${this.weight}</div>
-                                <div class="description" style="text-align:right;">${this.inplay} in play</div>
-                            </div>
+                            ${
+                                (settings.includeAvailability) ? 
+                                `<div class="right floated content">
+                                    <div class="header" style="font-weight:bold;text-align:right;">${this.weight}</div>
+                                    <div class="description" style="text-align:right;">${this.inplay} in play</div>
+                                </div>` : ''
+                            }
                             <div class="content">
                                 <div class="header" style="font-weight:bold;">${this.statusColor} ${this.notes}</div>
                                 <div class="description" style="font-style:italic;color:#db2828 !important;">${this.restricted}</div>
@@ -550,22 +558,23 @@ var shout = function() {
          */
 
         const settings = {
-            theme             : gmc.get('theme'),
-            showGB            : gmc.get('showGB'),
-            showPR            : gmc.get('showPR'),
-            showHT            : gmc.get('showHT'),
-            showEPM           : gmc.get('showEPM'),
-            showCancel        : gmc.get('showCancel'),
-            showHold          : gmc.get('showHold'),
-            filterMe          : gmc.get('filterMe'),
-            filterVertical    : gmc.get('filterVertical'),
-            filterTier        : gmc.get('filterTier'),
-            filterDirector    : gmc.get('filterDirector'),
-            initials          : gmc.get('initials'),
-            showDebug         : gmc.get('showDebug'),
-            forceRefreshCache : gmc.get('forceRefreshCache'),
-            cacheDateTime     : gmc.get('cacheDateTime'),
-            hashtags          : gmc.get('hashtags')
+            theme               : gmc.get('theme'),
+            showGB              : gmc.get('showGB'),
+            showPR              : gmc.get('showPR'),
+            showHT              : gmc.get('showHT'),
+            showEPM             : gmc.get('showEPM'),
+            showCancel          : gmc.get('showCancel'),
+            showHold            : gmc.get('showHold'),
+            filterMe            : gmc.get('filterMe'),
+            filterVertical      : gmc.get('filterVertical'),
+            filterTier          : gmc.get('filterTier'),
+            filterDirector      : gmc.get('filterDirector'),
+            initials            : gmc.get('initials'),
+            showDebug           : gmc.get('showDebug'),
+            includeAvailability : gmc.get('includeAvailability'),
+            forceRefreshCache   : gmc.get('forceRefreshCache'),
+            cacheDateTime       : gmc.get('cacheDateTime'),
+            hashtags            : gmc.get('hashtags')
         };
 
         shout(settings);
@@ -1390,7 +1399,7 @@ var shout = function() {
         }
 
         function getPeopleData() {
-            var workloadData = getWorkloadData();
+            var workloadData = (settings.includeAvailability) ? getWorkloadData() : {};
             var people = [];
 
             const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
@@ -1454,7 +1463,7 @@ var shout = function() {
             for (var _i = results.length - 1; _i >= 0; _i--) {
 
                 var _id = results[_i].getId();
-                var _workload = workloadData[_id.toString()];
+                var _workload = (Object.keys(workloadData).length !== 0) ? workloadData[_id.toString()] : null;
 
                 var newPerson = new Person(
                     _id,
