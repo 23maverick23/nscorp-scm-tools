@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.0.1
+// @version      3.0.2
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -846,7 +846,7 @@ var shout = function() {
             <form class="ui form fullscreen modal" id="scr-modal-request-form">
                 <i class="close icon"></i>
                 <div class="header">SC Request Quick Form</div>
-                <div class="content">
+                <div class="scrolling content">
 
                     <!-- Start Grid -->
                     <div class="ui stackable two column grid">
@@ -1136,6 +1136,24 @@ var shout = function() {
                             <div class="field">
                                 <label>Sales Manager Notes</label>
                                 <textarea rows="5" name="salesmanagernotes" id="salesmanagernotes" readonly="" style="background-color:lightgray;"></textarea>
+                            </div>
+
+                            <!-- LAUNCHPAD -->
+                            <div class="ui accordion field">
+                                <div class="title">
+                                    <i class="icon dropdown"></i>
+                                    Toggle Launchpad Information
+                                </div>
+                                <div class="content">
+                                    <div class="field">
+                                        <label>Qualifying Questions</label>
+                                        <textarea rows="20" name="launchpadqual" id="launchpadqual" readonly="" style="background-color:lightgray;"></textarea>
+                                    </div>
+                                    <div class="field">
+                                        <label>Launchpad Notes</label>
+                                        <textarea rows="5" name="launchpadnotes" id="launchpadnotes" readonly="" style="background-color:lightgray;"></textarea>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1560,6 +1578,16 @@ var shout = function() {
             nlapiSetFieldValue('custrecord_screq_details', text + getRequestDetails());
         }
 
+        function getLaunchpadQual() {
+            var text = nlapiGetFieldValue('custrecord_bdr_scr_qualifying_questions');
+            return text;
+        }
+
+        function getLaunchpadNotes() {
+            var text = nlapiGetFieldValue('custrecord_bdr_scr_sales_compass_notes');
+            return text;
+        }
+
         function getStaffingNotes() {
             var text = nlapiGetFieldValue('custrecord_screq_scmanager_notes_2');
             return text;
@@ -1909,6 +1937,10 @@ var shout = function() {
             .checkbox()
         ;
 
+        $('.ui.accordion')
+            .accordion()
+        ;
+
         $('#_legend')
             .popup()
         ;
@@ -2014,6 +2046,8 @@ var shout = function() {
         var $scrRequestForm = $('#scr-modal-request-form')
             .form('set value', 'screquestdetails', getRequestDetails())
             .form('set value', 'salesmanagernotes', getSalesManagerNotes())
+            .form('set value', 'launchpadqual', getLaunchpadQual())
+            .form('set value', 'launchpadnotes', getLaunchpadNotes())
             .form('set value', 'dateneeded', getDateNeeded())
             .form('set defaults', 'products', [])
             .form('set value', 'products', getProducts())
