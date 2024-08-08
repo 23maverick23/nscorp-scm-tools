@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.0.3
+// @version      3.1.0
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -18,6 +18,7 @@
 // @require      https://cdn.jsdelivr.net/gh/CoeJoder/waitForKeyElements.js@v1.3/waitForKeyElements.js
 // @require      https://openuserjs.org/src/libs/sizzle/GM_config.js
 // @require      https://userscripts-mirror.org/scripts/source/107941.user.js
+// @require      https://fomantic-ui.com/javascript/library/tablesort.js
 // @resource     FOMANTIC_CSS https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
@@ -51,11 +52,11 @@
 */
 
 const CACHE_DURATION_MS = 21600000; // duration in milliseconds, currently 6 hours
-const SCRIPT_PREFIX = 'BETA_';  // remove this later
-const SCRIPT_ID = `${SCRIPT_PREFIX}assistant_config`;
-const SCRIPT_CACHE_ID = `${SCRIPT_PREFIX}people_cache`;
-const SCRIPT_VERSION = GM_info.script.version;
-const CONFIG_TITLE = `${GM_info.script.name} (v${SCRIPT_VERSION})`;
+const SCRIPT_PREFIX     = 'BETA_';  // remove this later
+const SCRIPT_ID         = `${SCRIPT_PREFIX}assistant_config`;
+const SCRIPT_CACHE_ID   = `${SCRIPT_PREFIX}people_cache`;
+const SCRIPT_VERSION    = GM_info.script.version;
+const CONFIG_TITLE      = `${GM_info.script.name} (v${SCRIPT_VERSION})`;
 
 /**
  * Simple wrapper for console logging
@@ -167,16 +168,33 @@ var shout = function() {
             'default': false,
             'section': ['Experimental Settings', 'Only change these if you know what you\'re doing.']
         },
-         'includeAvailability': {
-            'label': 'Include SC availability & workload data in dropdown',
+        'includeBodyOfWork': {
+            'label': 'Include SC Body of Work lookup',
             'type': 'checkbox',
             'default': false
         },
-        'forceRefreshCache': {
-            'label': 'Force cache refresh',
+        'includeAvailability': {
+            'label': 'Include SC engagement workload data in dropdown',
             'type': 'checkbox',
-            'save': false,
             'default': false
+        },
+        'sortAvailabilityBy': {
+            'label': 'Sort "Assigned To" dropdown by: ',
+            'type': 'select',
+            'options': ['SC Name', '30 day load', 'In Play'],
+            'default': 'SC Name'
+        },
+        'sortAvailabilityDirection': {
+            'label': '"Assigned To" dropdown sort direction: ',
+            'type': 'select',
+            'options': ['Asc', 'Desc'],
+            'default': 'Asc'
+        },
+        'cacheRefreshDelay': {
+            'label': 'Refresh SC availability (and workload) data every N hour(s)',
+            'type': 'select',
+            'options': ['1', '2', '3', '4', '6'],
+            'default': '6'
         },
         'cacheDateTime': {
             'label': 'Date/time of last cache refresh',
@@ -185,16 +203,22 @@ var shout = function() {
             'title': 'This is for information purposes only.',
             'default': '',
             'save': false
+        },
+        'forceRefreshCache': {
+            'label': 'Force cache refresh',
+            'type': 'checkbox',
+            'save': false,
+            'default': false
         }
     };
 
     let modalSettingForm = document.createElement('form');
     modalSettingForm.setAttribute('id', 'scr-modal-settings-form');
-    modalSettingForm.setAttribute('class', 'ui small form modal');
+    modalSettingForm.setAttribute('class', 'ui overlay fullscreen form modal');
     document.body.appendChild(modalSettingForm);
 
     let frame = document.createElement('div');
-    frame.setAttribute('class', 'content');
+    frame.setAttribute('class', 'scrolling content');
     document.getElementById('scr-modal-settings-form').appendChild(frame);
 
     GM_registerMenuCommand(`${GM_info.script.name} Settings`, () => {
@@ -227,47 +251,55 @@ var shout = function() {
         // opens staffing modal form
         $('#scr-modal-settings-form')
             .modal({
-                inverted: true
+                inverted: true,
+                closable: false
             })
             .modal('setting', 'transition', 'scale')
             .modal('show')
         ;
 
+        /**
+         * These are just "quality of life" improvements to remove and restyle the settings panel
+         * from the gm_config script. There isn't a nicer way to remove and reset all the classnames
+         * to follow fomantic naming, so we will live with this mess for now...
+         */
+        
         $(`#${SCRIPT_ID}`).attr('style', ''); // remove default form styling
-
         $(`#${SCRIPT_ID}_header`).attr('class', 'ui center aligned large header'); // remove default header styling
-
         $(`#${SCRIPT_ID} .section_header.center`).attr('class', 'ui header'); // remove default section header styling
-
         $(`#${SCRIPT_ID} .section_desc.center`).attr('class', 'grey sub header'); // remove default section subheader styling
-
         $(`[id^=${SCRIPT_ID}_section_desc]`).each(function() {
             $(this).siblings("[id^=assistant_config_section_header]").append(this);
         });
-
         $(`#${SCRIPT_ID} .section_header_holder`).attr('class', 'ui segment'); // remove default section styling
-
         $(`#${SCRIPT_ID} label`).attr('class', ''); // remove default label styling
-
         $(`#${SCRIPT_ID} select`)
             .attr('class', 'ui fluid selection dropdown') // remove default class for select
             .parent().closest('div')
             .attr('class', 'inline field') // remove default class for select
         ;
-
         $(`#${SCRIPT_ID} select`).dropdown({clearable: true}); // convert select to fancy
-
         $(`#${SCRIPT_ID} input:checkbox`)
             .attr('class', 'hidden') // remove default class for checkbox
             .parent().closest('div')
             .attr('class', 'ui toggle checkbox') // remove default class for checkbox
             .wrap('<div class="inline field"></div>')
         ;
+        $(`#${SCRIPT_ID} input:radio`)
+            .attr('class', 'hidden')
+        ;
+        $(`#${SCRIPT_ID} input:radio+label`).each(function() {
+            $(this).prev().addBack().wrapAll('<div class="ui radio checkbox" />');
+        });
+        $(`.ui.radio.checkbox`)
+            .parent().closest('div')
+            .attr('class', 'field')
+            .parent().closest('div')
+            .attr('class', 'inline fields')
+        ;
         $(`#${SCRIPT_ID} input:checkbox`).parent().closest('div').checkbox(); // convert checkbox to fancy
-
         $(`#${SCRIPT_ID}_saveBtn`).attr('class', 'ui green button'); // remove default class for buttons
         $(`#${SCRIPT_ID}_closeBtn`).attr('class', 'ui black button').html('Dismiss'); // remove default class for buttons
-
         $(`#${SCRIPT_ID}_cacheDateTime_var`).attr('class', 'disabled field'); // make field disabled
         $(`#${SCRIPT_ID}_field_cacheDateTime`).attr('readonly', ''); // make cache date/time field read-only
 
@@ -283,7 +315,7 @@ var shout = function() {
     }
 
     function onClose() {
-        gmc.close();
+        // gmc.close();
         closeSettingsModal();
     }
 
@@ -393,15 +425,15 @@ var shout = function() {
 
         class Person {
             constructor(id, first, last, location, status, notes, restricted, weight, inplay) {
-                this._id = id;
-                this._first = first;
-                this._last = last;
-                this._location = location;
-                this._status = status;
-                this._notes = notes;
+                this._id         = id;
+                this._first      = first;
+                this._last       = last;
+                this._location   = location;
+                this._status     = status;
+                this._notes      = notes;
                 this._restricted = restricted;
-                this._weight = weight || 0;
-                this._inplay = inplay || 0;
+                this._weight     = weight || 0;
+                this._inplay     = inplay || 0;
             }
 
             get id() {
@@ -554,27 +586,41 @@ var shout = function() {
         }
 
         /**
-         * INITIALIZE SETTINGS
-         */
+        * +==========================================================================+
+        * |                                                                          |
+        * |    ######  ######## ######## ######## #### ##    ##  ######    ######    |
+        * |   ##    ## ##          ##       ##     ##  ###   ## ##    ##  ##    ##   |
+        * |   ##       ##          ##       ##     ##  ####  ## ##        ##         |
+        * |    ######  ######      ##       ##     ##  ## ## ## ##   ####  ######    |
+        * |         ## ##          ##       ##     ##  ##  #### ##    ##        ##   |
+        * |   ##    ## ##          ##       ##     ##  ##   ### ##    ##  ##    ##   |
+        * |    ######  ########    ##       ##    #### ##    ##  ######    ######    |
+        * |                                                                          |
+        * +==========================================================================+
+        */
 
         const settings = {
-            theme               : gmc.get('theme'),
-            showGB              : gmc.get('showGB'),
-            showPR              : gmc.get('showPR'),
-            showHT              : gmc.get('showHT'),
-            showEPM             : gmc.get('showEPM'),
-            showCancel          : gmc.get('showCancel'),
-            showHold            : gmc.get('showHold'),
-            filterMe            : gmc.get('filterMe'),
-            filterVertical      : gmc.get('filterVertical'),
-            filterTier          : gmc.get('filterTier'),
-            filterDirector      : gmc.get('filterDirector'),
-            initials            : gmc.get('initials'),
-            showDebug           : gmc.get('showDebug'),
-            includeAvailability : gmc.get('includeAvailability'),
-            forceRefreshCache   : gmc.get('forceRefreshCache'),
-            cacheDateTime       : gmc.get('cacheDateTime'),
-            hashtags            : gmc.get('hashtags')
+            theme                     : gmc.get('theme'),
+            showGB                    : gmc.get('showGB'),
+            showPR                    : gmc.get('showPR'),
+            showHT                    : gmc.get('showHT'),
+            showEPM                   : gmc.get('showEPM'),
+            showCancel                : gmc.get('showCancel'),
+            showHold                  : gmc.get('showHold'),
+            filterMe                  : gmc.get('filterMe'),
+            filterVertical            : gmc.get('filterVertical'),
+            filterTier                : gmc.get('filterTier'),
+            filterDirector            : gmc.get('filterDirector'),
+            initials                  : gmc.get('initials'),
+            showDebug                 : gmc.get('showDebug'),
+            includeAvailability       : gmc.get('includeAvailability'),
+            sortAvailabilityBy        : gmc.get('sortAvailabilityBy'),
+            sortAvailabilityDirection : gmc.get('sortAvailabilityDirection'),
+            includeBodyOfWork         : gmc.get('includeBodyOfWork'),
+            cacheRefreshDelay         : gmc.get('cacheRefreshDelay'),
+            forceRefreshCache         : gmc.get('forceRefreshCache'),
+            cacheDateTime             : gmc.get('cacheDateTime'),
+            hashtags                  : gmc.get('hashtags')
         };
 
         shout(settings);
@@ -1032,6 +1078,10 @@ var shout = function() {
                                 </div>
                             </div>
 
+                            <div class="ui ${(settings.includeBodyOfWork) ? '' : 'hidden'} tiny message">
+                                <p>Select an SC Industry to display Body of Work data below...</p>
+                            </div>
+
                             <div class="three fields">
                                 <div class="field">
                                     <label>Potential Integrations</label>
@@ -1129,6 +1179,39 @@ var shout = function() {
                                     <input type="text" name="scmredflags" placeholder="Red flags or cautions">
                                 </div>
                             </div>
+
+                            ${(settings.includeBodyOfWork) ? `
+                                <div class="ui accordion field">
+                                    <div class="title">
+                                        <i class="icon dropdown"></i>
+                                        Toggle Industry ratings
+                                    </div>
+                                    <div class="content">
+                                        <table id="bodyofwork" class="ui sortable celled scrolling table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="single line">SC Name</th>
+                                                    <th class="single line">Industry</th>
+                                                    <th class="single line">Sub-Industry</th>
+                                                    <th>Rating</th>
+                                                    <th>Last Updated</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                            <tfoot class="full-width">
+                                                <tr>
+                                                    <th colspan="5">
+                                                        <div id="_searchindustrylink" class="ui right floated small primary labeled icon button">
+                                                            <i class="industry icon"></i> Open industry search
+                                                        </div>
+                                                    </th>
+                                              </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                        ` : ''}
+
 
                         </div>
 
@@ -1255,14 +1338,16 @@ var shout = function() {
 
         function getCurrentEmp() {
             var curUser = nlapiGetUser();
-            var filters = new Array();
-            filters[0] = new nlobjSearchFilter('custrecord_emproster_emp', null, 'is', curUser);
-            var columns = new Array();
-            columns[0] = new nlobjSearchColumn('custrecord_emproster_vertical_amo');
-            columns[1] = new nlobjSearchColumn('custrecord_emproster_salesteam');
-            columns[2] = new nlobjSearchColumn('custrecord_emproster_salesregion');
-            columns[3] = new nlobjSearchColumn('custrecord_emproster_sales_tier');
-            columns[4] = new nlobjSearchColumn('name');
+            var filters = [];
+            filters.push(new nlobjSearchFilter('custrecord_emproster_emp', null, 'is', curUser));
+            
+            var columns = [];
+            columns.push(new nlobjSearchColumn('custrecord_emproster_vertical_amo'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_salesteam'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_salesregion'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_sales_tier'));
+            columns.push(new nlobjSearchColumn('name'));
+            
             var results = nlapiSearchRecord('customrecord_emproster', null, filters, columns);
             return results[0];
         }
@@ -1304,7 +1389,7 @@ var shout = function() {
             const sixMonthsAgoFormatted = nlapiDateToString(sixMonthsAgo, 'date');
 
             // filter on current, active team
-            var filters = new Array();
+            var filters = [];
 
             filters.push(new nlobjSearchFilter('custrecord_screq_status', null, 'is', 2)); // Request Status = Staffed
             filters.push(new nlobjSearchFilter('created', null, 'onorafter', sixMonthsAgoFormatted));
@@ -1394,7 +1479,7 @@ var shout = function() {
                 workload[scName] = tmpArray;
             }
 
-            shout(workload);
+            // shout(workload);
             return workload;
         }
 
@@ -1480,7 +1565,195 @@ var shout = function() {
                 people.push(newPerson);
             }
 
+            function sortPeopleData(people, key, ascending) {
+                people.sort((a, b) => {
+                    let valueA, valueB;
+
+                    // Get the appropriate values based on the key
+                    if (key === '30 day load') {
+                        // these values look like "9.999%"
+                        valueA = parseFloat(a.weight);
+                        valueB = parseFloat(b.weight);
+                    } else if (key === 'In Play') {
+                        // these values look like "9"
+                        valueA = parseInt(a.inplay);
+                        valueB = parseInt(b.inplay);
+                    } else if (key === 'SC Name') {
+                        // these values look like "First Last"
+                        valueA = a.fullname.toLowerCase(); // case-insensitive sorting
+                        valueB = b.fullname.toLowerCase();
+                    } else {
+                        shout('Invalid sort key; check settings.')
+                        return 0;
+                    }
+
+                    // Compare the values
+                    if (valueA < valueB) return ascending ? -1 : 1;
+                    if (valueA > valueB) return ascending ? 1 : -1;
+                    return 0; // If values are equal
+                });
+            }
+
+            const sortBy     = settings.sortAvailabilityBy || 'SC Name';
+            const sortAsc    = (settings.sortAvailabilityDirection === 'Desc') ? false : true;
+
+            sortPeopleData(people, sortBy, sortAsc);
             return people;
+        }
+
+        function getBodyOfWorkData(industryId) {
+            if (!industryId) { return null; }
+
+            var bodyOfWork = [];
+
+            const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
+            const teamId = empRec.getValue('custrecord_emproster_salesteam');
+            const regId = empRec.getValue('custrecord_emproster_salesregion');
+            const tierId = empRec.getValue('custrecord_emproster_sales_tier'); // 10, 28, 29 are all valid SC Tier IDs
+
+            // filter on current, active team
+            var filters = [];
+
+            filters.push(new nlobjSearchFilter('custrecord_sr_ind_rating_subindustry', null, 'is', industryId));
+
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rosterstatus', 'custrecord_sr_ind_rating_employee', 'is', 1));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_eminactive', 'custrecord_sr_ind_rating_employee', 'is', 'F'));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', 'custrecord_sr_ind_rating_employee', 'is', teamId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', 'custrecord_sr_ind_rating_employee', 'is', regId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', 'custrecord_sr_ind_rating_employee', 'is', 25)); // this should filter to QB = Solution Consultant
+
+            if (settings.filterMe === true) {
+                filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
+            }
+
+            if (settings.filterVertical === true) {
+                filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'is', vertId));
+            }
+
+            if (settings.filterTier === true) {
+                filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'is', tierId));
+            }
+
+            if (settings.filterDirector) {
+                const dirName = settings.filterDirector;
+                switch (dirName) {
+                    case "jeff":
+                    case "karl":
+                    case "rebecca":
+                    case "lauren":
+                    case "robyn":
+                        filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[dirName]));
+                        break;
+                    default:
+                        shout(`Invalid director name provided: ${dirName}.`);
+                }
+            }
+
+            var columns = [];
+            columns.push(new nlobjSearchColumn('internalid'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_industry'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_subindustry'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_lastupdated'));
+
+            // var nRating = new nlobjSearchColumn('formulanumeric', null, 'sum');
+            // nRating.setFormula("TO_NUMBER(SUBSTR({custrecord_sr_ind_rating}, 1, 1))");
+            // nRating.setLabel('nRating');
+            // columns.push(nRating);
+
+            var results = nlapiSearchRecord('customrecord_sr_industry_rating_entry', null, filters, columns);
+
+            if (!results || results.length < 1) {
+                shout('Error getting team workload!');
+                return;
+            }
+
+            for (var _i = results.length - 1; _i >= 0; _i--) {
+
+                var result       = results[_i];
+                var id           = result.getId();
+                var name         = result.getText('custrecord_sr_ind_rating_employee');
+                var industry     = result.getText('custrecord_sr_ind_rating_industry');
+                var subindustry  = result.getText('custrecord_sr_ind_rating_subindustry');
+                var rating       = Array.from(result.getText('custrecord_sr_ind_rating'))[0]; // only pull in the numeric rating, not the text
+                var lastupdate   = result.getValue('custrecord_sr_ind_rating_lastupdated');
+
+                var data = [id, name, industry, subindustry, rating, lastupdate];
+
+                bodyOfWork.push(data);
+            }
+
+            shout(bodyOfWork);
+            return bodyOfWork;
+        }
+
+        function generateRating(rating) {
+            var maxRemain = 5 - rating;
+            var ratings = [];
+            
+            for (var i = 0; i < rating; i++) {
+                ratings.push(`<i class="star icon active"></i>`);
+            }
+
+            for (var j = 0; j < maxRemain;j++) {
+                ratings.push(`<i class="star icon"></i>`)
+            }
+
+            var ratingsHtml = ratings.join('');
+            return `<div class="ui yellow rating disabled">${ratingsHtml}</div>`;
+        }
+
+        function generateBodtOfWorkHtml(data) {
+            if (!data || data.length === 0) { return ''; }
+
+            var html = [];
+            var len = data.length;
+            var i = 0;
+
+            for (i; i < len; i++) {
+                var row = /* syntax: html */ `
+                    <tr>
+                        <td class="single line">${data[i][1]}</td>
+                        <td>${data[i][2]}</td>
+                        <td>${data[i][3]}</td>
+                        <td>${generateRating(data[i][4])}</div></td>
+                        <td class="right aligned">${data[i][5]}</td>
+                    </tr>
+                `
+                html.push(row);
+            }
+
+            return html.join('');
+        }
+
+        async function updateBodyOfWorkTable(industryId) {
+            try {
+                const payload = await new Promise((resolve, reject) => {
+                    try {
+                        const result = getBodyOfWorkData(industryId);
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+
+                shout("Payload received!");
+
+                // now we can use payload which should be the result of getBodyOfWorkData
+                var html = generateBodtOfWorkHtml(payload);
+                $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
+                
+            } catch (error) {
+                shout("Payload error:", error)
+            }
+        }
+
+        function updateBodyOfWorkTableSimple(industryId) {
+            const payload = getBodyOfWorkData(industryId);
+
+            var html = generateBodtOfWorkHtml(payload);
+            $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
         }
 
         /**
@@ -1498,7 +1771,6 @@ var shout = function() {
         */
 
         function checkCache() {
-            // shout(`Cache set to ${CACHE_DURATION_MS}ms`);
 
             var getCacheArray = GM_SuperValue.get(`${SCRIPT_CACHE_ID}`);
 
@@ -1511,7 +1783,18 @@ var shout = function() {
                     var _currentTs = new Date().valueOf();
                     var _diffTs = _currentTs - getCacheTs;
 
-                    if (_diffTs >= CACHE_DURATION_MS) {
+                    /**
+                     * Cache is used to help increase performance by limiting
+                     * API calls for data that doens't change all that often.
+                     * We store the full HTML formatted dropdown values in the
+                     * cache and only refresh that data after a duration specified
+                     * in settings. For maths purposes, 3600000 ms = 1 hr.
+                     */
+                    
+                    const cacheDurationHrs = parseInt(settings.cacheRefreshDelay) || 6;
+                    const cacheDurationMs  = cacheDurationHrs * 3600000;
+
+                    if (_diffTs >= cacheDurationMs) {
                         // cache is older than threshold, refresh cache
                         refreshCache();
                     }
@@ -1549,7 +1832,7 @@ var shout = function() {
             GM_SuperValue.set(`${SCRIPT_CACHE_ID}`, _peopleCache);
             GM_SuperValue.set(`${SCRIPT_CACHE_ID}_ts`, _peopleCacheTs);
 
-            shout('People Cache Refreshed');
+            shout('People cache refreshed');
         }
 
         /**
@@ -1775,14 +2058,14 @@ var shout = function() {
         function setRecordCancelled() {
             // button action - cancelled
             setStatusCancelled();
-            shout('Set status to Cancelled, and Assigned To to myself.')
+            // shout('Set status to Cancelled, and Assigned To to myself.')
         }
 
         function setRecordHold() {
             // button action - on hold
             setStatusHold();
             setAssigneeMe();
-            shout('Set status to On Hold, and Assigned To to myself.')
+            // shout('Set status to On Hold, and Assigned To to myself.')
         }
 
         function setRecordProductsEast() {
@@ -1790,7 +2073,7 @@ var shout = function() {
             setStatusRequested();
             setAssigneeLauren();
             setXvert();
-            shout('Set to xvr, and Assigned To Lauren.')
+            // shout('Set to xvr, and Assigned To Lauren.')
         }
 
         function setRecordProductsWest() {
@@ -1798,7 +2081,7 @@ var shout = function() {
             setStatusRequested();
             setAssigneeRobyn();
             setXvert();
-            shout('Set to xvr, and Assigned To Robyn.')
+            // shout('Set to xvr, and Assigned To Robyn.')
         }
 
         function setRecordGBEast() {
@@ -1806,7 +2089,7 @@ var shout = function() {
             setStatusRequested();
             setAssigneeKarl();
             setXvert();
-            shout('Set to xvr, and Assigned To Karl.')
+            // shout('Set to xvr, and Assigned To Karl.')
         }
 
         function setRecordGBWest() {
@@ -1814,7 +2097,7 @@ var shout = function() {
             setStatusRequested();
             setAssigneeRebecca();
             setXvert();
-            shout('Set to xvr, and Assigned To Rebecca.')
+            // shout('Set to xvr, and Assigned To Rebecca.')
         }
 
         function setRecordHT() {
@@ -1822,7 +2105,7 @@ var shout = function() {
             setStatusRequested();
             setAssigneeJeff();
             setXvert();
-            shout('Set to xvr, and Assigned to Jeff.');
+            // shout('Set to xvr, and Assigned to Jeff.');
         }
 
         function setRecordEPM() {
@@ -1830,7 +2113,7 @@ var shout = function() {
             setStatusRequested();
             setAssigneeJason();
             setXvert();
-            shout('Set to xvr, and Assigned to Jason.');
+            // shout('Set to xvr, and Assigned to Jason.');
         }
 
         function openRequestModal() {
@@ -1925,6 +2208,12 @@ var shout = function() {
                 openRequestModal();
             }
         );
+        $('#_searchindustrylink').click(
+            function(event) {
+                event.preventDefault();
+                //
+            }
+        )
 
         $('#scr-modal-request-form')
             .modal({
@@ -1950,6 +2239,14 @@ var shout = function() {
             .accordion()
         ;
 
+        $('.ui.rating')
+            .rating('disable')
+        ;
+
+        $('#bodyofwork')
+            .tablesort()
+        ;
+
         $('#_legend')
             .popup()
         ;
@@ -1960,11 +2257,22 @@ var shout = function() {
             })
         ;
 
-        $('#scmindustry')
+        var industryFld = $('#scmindustry')
             .dropdown({
-                hideDividers: 'empty'
+                hideDividers: 'empty',
             })
         ;
+
+        if (settings.includeBodyOfWork) {
+            industryFld.dropdown({
+                onChange: function(value, text, $selected) {
+                    shout(`You selected the SC Industry "${text}" with an internal ID of ${value}`);
+                    updateBodyOfWorkTable(value);
+                    // updateBodyOfWorkTableSimple(value);
+                    $('.ui.rating').rating('disable');
+                }
+            })
+        }
 
         $('#scmsku')
             .dropdown({
@@ -2064,7 +2372,7 @@ var shout = function() {
                 onSuccess: function(event, fields) {
                     event.preventDefault();
                     var allFields = $scrRequestForm.form('get values');
-                    shout("Form data: " + JSON.stringify(allFields));
+                    // shout("Form data: " + JSON.stringify(allFields));
 
                     // var dateNeeded = allfields.dateneeded;
                     var dateNeeded = $('#dateneeded').calendar('get date');
