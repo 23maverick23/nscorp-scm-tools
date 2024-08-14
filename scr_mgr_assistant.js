@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.1.0
+// @version      3.1.1
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -898,7 +898,7 @@ var shout = function() {
 
         var modalContentRequestForm = /* syntax: html */ `
             <!-- Staff My Team Modal and Form -->
-            <form class="ui form fullscreen modal" id="scr-modal-request-form">
+            <form class="ui form overlay fullscreen modal" id="scr-modal-request-form">
                 <i class="close icon"></i>
                 <div class="header">SC Request Quick Form</div>
                 <div class="scrolling content">
@@ -1078,10 +1078,6 @@ var shout = function() {
                                 </div>
                             </div>
 
-                            <div class="ui ${(settings.includeBodyOfWork) ? '' : 'hidden'} tiny message">
-                                <p>Select an SC Industry to display Body of Work data below...</p>
-                            </div>
-
                             <div class="three fields">
                                 <div class="field">
                                     <label>Potential Integrations</label>
@@ -1119,7 +1115,6 @@ var shout = function() {
                                         <i class="dropdown icon"></i>
                                         <div class="default text">Add product(s)</div>
                                         <div class="menu">
-                                            <div class="item" data-value="1">ACS</div>
                                             <div class="item" data-value="2">Advanced Electronic Bank Payments</div>
                                             <div class="item" data-value="3">Advanced Manufacturing</div>
                                             <div class="item" data-value="4">Advanced Order Management</div>
@@ -1127,9 +1122,7 @@ var shout = function() {
                                             <div class="item" data-value="6">Bill Capture</div>
                                             <div class="item" data-value="7">CPQ</div>
                                             <div class="item" data-value="8">Demand Planning</div>
-                                            <div class="item" data-value="9">Disaster Recovery</div>
                                             <div class="item" data-value="10">Dunning</div>
-                                            <div class="item" data-value="11">Edition</div>
                                             <div class="item" data-value="12">EPM FCC</div>
                                             <div class="item" data-value="13">EPM FF</div>
                                             <div class="item" data-value="14">EPM NR</div>
@@ -1142,18 +1135,14 @@ var shout = function() {
                                             <div class="item" data-value="21">Fixed Asset Management</div>
                                             <div class="item" data-value="22">Incentive Compensation</div>
                                             <div class="item" data-value="23">Inventory Management</div>
-                                            <div class="item" data-value="24">LCS</div>
                                             <div class="item" data-value="25">NS Connector</div>
-                                            <div class="item" data-value="26">NS POS</div>
                                             <div class="item" data-value="27">NSAW</div>
                                             <div class="item" data-value="28">OneWorld</div>
                                             <div class="item" data-value="29">OpenAir</div>
-                                            <div class="item" data-value="30">Other</div>
                                             <div class="item" data-value="31">Payroll</div>
                                             <div class="item" data-value="33">Quality Management </div>
                                             <div class="item" data-value="34">Rebate Management</div>
                                             <div class="item" data-value="35">Revenue Management</div>
-                                            <div class="item" data-value="36">Sandbox</div>
                                             <div class="item" data-value="37">Smart Count</div>
                                             <div class="item" data-value="38">SuiteAnalytics Connect</div>
                                             <div class="item" data-value="39">SuiteBilling</div>
@@ -1163,7 +1152,6 @@ var shout = function() {
                                             <div class="item" data-value="43">SuiteCommerce MyAccount</div>
                                             <div class="item" data-value="44">SuitePeople</div>
                                             <div class="item" data-value="45">SuiteProjects</div>
-                                            <div class="item" data-value="47">Users</div>
                                             <div class="item" data-value="48">WFM</div>
                                             <div class="item" data-value="49">WIP and Routings</div>
                                             <div class="item" data-value="50">WMS</div>
@@ -1181,36 +1169,93 @@ var shout = function() {
                             </div>
 
                             ${(settings.includeBodyOfWork) ? `
-                                <div class="ui accordion field">
-                                    <div class="title">
-                                        <i class="icon dropdown"></i>
-                                        Toggle Industry ratings
-                                    </div>
-                                    <div class="content">
-                                        <table id="bodyofwork" class="ui sortable celled scrolling table">
-                                            <thead>
-                                                <tr>
-                                                    <th class="single line">SC Name</th>
-                                                    <th class="single line">Industry</th>
-                                                    <th class="single line">Sub-Industry</th>
-                                                    <th>Rating</th>
-                                                    <th>Last Updated</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody></tbody>
-                                            <tfoot class="full-width">
-                                                <tr>
-                                                    <th colspan="5">
-                                                        <div id="_searchindustrylink" class="ui right floated small primary labeled icon button">
-                                                            <i class="industry icon"></i> Open industry search
-                                                        </div>
-                                                    </th>
-                                              </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
+                            <h4 class="ui horizontal left aligned divider header">
+                                <i class="tools icon"></i>
+                                Product Skills Search Ranking
+                            </h4>
+
+                            <div class="ui basic segment">
+                                <!-- Dimmer and Loader -->
+                                <div class="ui dimmer" id="tableSkillsLoader">
+                                    <div class="ui indeterminate blue elastic text loader">Gathering and Ranking Skills</div>
                                 </div>
-                        ` : ''}
+
+                                <!-- TOP Help text -->
+                                <div class="ui top attached secondary segment">
+                                    <p>Need help narrowing down an SC? Select an SC Industry and at least one Product to search and rank Body of Work data below. Use the filters to control which SCs should be returned.</p>
+                                </div>
+
+                                <!-- MIDDLE Filters and buttons -->
+                                <div class="ui attached segment">
+                                    <div class="four fields">
+                                        <div class="field">
+                                            <label>My Team</label>
+                                            <select class="ui fluid search dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
+                                                <option value="">Limit to my team</option>
+                                                <option value="T">Yes</option>
+                                                <option value="F">No</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>SC Vertical</label>
+                                            <select class="ui fluid search dropdown" multiple="" name="skillfilter-scvertical" id="skillfilter-scvertical">
+                                                <option value="">Filter SC vertical</option>
+                                                <option value="5">General Business</option>
+                                                <option value="58">Products</option>
+                                                <option value="57">High Tech</option>
+                                                <option value="45">Tiger</option>
+                                            </select>
+                                        </div>
+                                    
+                                        <div class="field">
+                                            <label>SC Director</label>
+                                            <select class="ui fluid search dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
+                                                <option value="">Filter SC director</option>
+                                                <option value="karl">Karl</option>
+                                                <option value="rebecca">Rebecca</option>
+                                                <option value="lauren">Lauren</option>
+                                                <option value="robyn">Robyn</option>
+                                                <option value="jeff">Jeff</option>
+                                            </select>
+                                        </div>
+                                    
+                                        <div class="field">
+                                            <label>SC Tier</label>
+                                            <select class="ui fluid search dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
+                                                <option value="">Filter SC tier</option>
+                                                <option value="29">Emerging</option>
+                                                <option value="28">Upmarket</option>
+                                            </select>
+                                        </div>
+
+                                    </div>
+                                    
+                                    <div class="ui blue button" id="productskillsearch"><i class="icon search"></i>Search Skills</div>
+                                    
+                                </div>
+
+                                <!-- BOTTOM Main table -->
+                                <div class="ui bottom attached segment">
+                                    
+                                    <table id="bodyofwork" class="ui compact small sortable selectable collapsing celled resizable scrolling table">
+                                        <thead>
+                                            <tr>
+                                                <th class="single line">SC Name</th>
+                                                <th>Availability Notes</th>
+                                                <th class="single line">Sub-Industry Fit</th>
+                                                <th>Skills Detail</th>
+                                                <th class="single line">Weighted Rating</th>
+                                                <th class="single line">Stack Rank</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+
+                                </div>
+
+                            </div>
+                            ` : ''}
 
 
                         </div>
@@ -1601,10 +1646,66 @@ var shout = function() {
             return people;
         }
 
-        function getBodyOfWorkData(industryId) {
+        /**
+         * Get custom skills filters from form
+         * @return {obj} Filter obj which contains two keys.
+         */
+        function getTableFilters() {
+            var filters = {};
+            var fIndustry = [];
+            var fSkills = [];
+
+            // my team
+            const filterMyTeam = $('#skillfilter-myteam').dropdown('get value') || null;
+            if (filterMyTeam && filterMyTeam === 'T') {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee', 'is', _ids.me));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
+                shout('Table filter: My Team');
+            }
+            
+            // sc vertical
+            const filterVertical = $('#skillfilter-scvertical').dropdown('get values') || null;
+            if (filterVertical && filterVertical.length > 0) {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee', 'anyof', filterVertical));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'anyof', filterVertical));
+                shout('Table filter: SC Vertical');
+            }
+            
+            // sc director
+            const filterDirector = $('#skillfilter-scdirector').dropdown('get value') || null;
+            
+            switch (filterDirector) {
+                case "jeff":
+                case "karl":
+                case "rebecca":
+                case "lauren":
+                case "robyn":
+                    fSkills.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_ssm_skill_employee', 'is', _ids[filterDirector]));
+                    fIndustry.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[filterDirector]));
+                    shout('Table filter: SC Director');
+                    break;
+                default:
+                    shout(`Invalid director name provided: ${filterDirector}.`);
+            }
+            
+            // sc tier
+            const filterTier = $('#skillfilter-sctier').dropdown('get values') || null;
+            if (filterTier && filterTier.length > 0) {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee', 'anyof', filterTier));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'anyof', filterTier));
+                shout('Table filter: SC Tier');
+            }
+
+            filters.industry = fIndustry;
+            filters.skills = fSkills;
+
+            return filters;
+        }
+
+        function getBodyOfWorkIndustryData(industryId, tableFilters) {
             if (!industryId) { return null; }
 
-            var bodyOfWork = [];
+            var industryData = [];
 
             const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
             const teamId = empRec.getValue('custrecord_emproster_salesteam');
@@ -1622,40 +1723,44 @@ var shout = function() {
             filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', 'custrecord_sr_ind_rating_employee', 'is', regId));
             filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', 'custrecord_sr_ind_rating_employee', 'is', 25)); // this should filter to QB = Solution Consultant
 
-            if (settings.filterMe === true) {
-                filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
-            }
+            if (tableFilters && tableFilters.length > 0) {
+                filters = filters.concat(tableFilters);
+            } else {
+                if (settings.filterMe === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
+                }
 
-            if (settings.filterVertical === true) {
-                filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'is', vertId));
-            }
+                if (settings.filterVertical === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'is', vertId));
+                }
 
-            if (settings.filterTier === true) {
-                filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'is', tierId));
-            }
+                if (settings.filterTier === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'is', tierId));
+                }
 
-            if (settings.filterDirector) {
-                const dirName = settings.filterDirector;
-                switch (dirName) {
-                    case "jeff":
-                    case "karl":
-                    case "rebecca":
-                    case "lauren":
-                    case "robyn":
-                        filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[dirName]));
-                        break;
-                    default:
-                        shout(`Invalid director name provided: ${dirName}.`);
+                if (settings.filterDirector) {
+                    const dirName = settings.filterDirector;
+                    switch (dirName) {
+                        case "jeff":
+                        case "karl":
+                        case "rebecca":
+                        case "lauren":
+                        case "robyn":
+                            filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[dirName]));
+                            break;
+                        default:
+                            shout(`Invalid director name provided: ${dirName}.`);
+                    }
                 }
             }
 
             var columns = [];
             columns.push(new nlobjSearchColumn('internalid'));
             columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_employee'));
+            columns.push(new nlobjSearchColumn('internalid', 'custrecord_sr_ind_rating_employee'));
             columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_industry'));
             columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_subindustry'));
             columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating'));
-            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_lastupdated'));
 
             // var nRating = new nlobjSearchColumn('formulanumeric', null, 'sum');
             // nRating.setFormula("TO_NUMBER(SUBSTR({custrecord_sr_ind_rating}, 1, 1))");
@@ -1673,52 +1778,348 @@ var shout = function() {
 
                 var result       = results[_i];
                 var id           = result.getId();
-                var name         = result.getText('custrecord_sr_ind_rating_employee');
+                var employee     = result.getText('custrecord_sr_ind_rating_employee');
+                var employeeId   = result.getValue('internalid', 'custrecord_sr_ind_rating_employee');
                 var industry     = result.getText('custrecord_sr_ind_rating_industry');
                 var subindustry  = result.getText('custrecord_sr_ind_rating_subindustry');
                 var rating       = Array.from(result.getText('custrecord_sr_ind_rating'))[0]; // only pull in the numeric rating, not the text
-                var lastupdate   = result.getValue('custrecord_sr_ind_rating_lastupdated');
 
-                var data = [id, name, industry, subindustry, rating, lastupdate];
+                var data = [
+                    employeeId,
+                    employee,
+                    industry,
+                    subindustry,
+                    rating
+                ];
 
-                bodyOfWork.push(data);
+                industryData.push(data);
             }
 
-            shout(bodyOfWork);
-            return bodyOfWork;
+            shout("Industry data:", industryData);
+            return industryData;
+        }
+
+        function getBodyOfWorkSkillData(skillIds, tableFilters) {
+            if (!skillIds) { return null; }
+
+            shout('skillIds: ', skillIds);
+
+            var skills = [];
+
+            const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
+            const teamId = empRec.getValue('custrecord_emproster_salesteam');
+            const regId = empRec.getValue('custrecord_emproster_salesregion');
+            const tierId = empRec.getValue('custrecord_emproster_sales_tier'); // 10, 28, 29 are all valid SC Tier IDs
+
+            // filter on current, active team
+            var filters = [];
+
+            filters.push(new nlobjSearchFilter('custrecord_ssm_skill_entry', null, 'anyof', skillIds));
+
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rosterstatus', 'custrecord_ssm_skill_employee', 'is', 1));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_eminactive', 'custrecord_ssm_skill_employee', 'is', 'F'));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', 'custrecord_ssm_skill_employee', 'is', teamId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', 'custrecord_ssm_skill_employee', 'is', regId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', 'custrecord_ssm_skill_employee', 'is', 25)); // this should filter to QB = Solution Consultant
+
+            if (tableFilters && tableFilters.length > 0) {
+                filters = filters.concat(tableFilters);
+            } else {
+
+                if (settings.filterMe === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee', 'is', _ids.me));
+                }
+
+                if (settings.filterVertical === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee', 'is', vertId));
+                }
+
+                if (settings.filterTier === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee', 'is', tierId));
+                }
+
+                if (settings.filterDirector) {
+                    const dirName = settings.filterDirector;
+                    switch (dirName) {
+                        case "jeff":
+                        case "karl":
+                        case "rebecca":
+                        case "lauren":
+                        case "robyn":
+                            filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_ssm_skill_employee', 'is', _ids[dirName]));
+                            break;
+                        default:
+                            shout(`Invalid director name provided: ${dirName}.`);
+                    }
+                }
+            }
+
+            var columns = [];
+            columns.push(new nlobjSearchColumn('internalid'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('internalid', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_subsection'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_entry'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_rating'));
+            // columns.push(new nlobjSearchColumn('custrecord_last_updated'));
+
+            // var nRating = new nlobjSearchColumn('formulanumeric', null, 'sum');
+            // nRating.setFormula("TO_NUMBER(SUBSTR({custrecord_sr_ind_rating}, 1, 1))");
+            // nRating.setLabel('nRating');
+            // columns.push(nRating);
+
+            var results = nlapiSearchRecord('customrecord_ssm_entry', null, filters, columns);
+
+            if (!results || results.length < 1) {
+                shout('Error getting team workload!');
+                return;
+            }
+
+            for (var _i = results.length - 1; _i >= 0; _i--) {
+
+                var result         = results[_i];
+                var id             = result.getId();
+                var employee       = result.getText('custrecord_ssm_skill_employee');
+                var employeeId     = result.getText('internalid', 'custrecord_ssm_skill_employee');
+                var availability   = result.getText('custrecord_emproster_avail', 'custrecord_ssm_skill_employee');
+                var avail_notes    = result.getValue('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee');
+                var avail_res      = result.getValue('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee');
+                var subsection     = result.getText('custrecord_ssm_skill_subsection');
+                var skill          = result.getText('custrecord_ssm_skill_entry');
+                var rating         = Array.from(result.getText('custrecord_ssm_skill_rating'))[0]; // only pull in the numeric rating, not the text
+                var ratingWeighted = generateWeightedRating(rating);
+                // var lastupdate     = result.getValue('custrecord_last_updated');
+
+                var data = [
+                    employeeId,
+                    employee,
+                    subsection,
+                    skill,
+                    rating,
+                    ratingWeighted,
+                    availability,
+                    avail_notes,
+                    avail_res
+                ];
+
+                skills.push(data);
+            }
+
+            shout('All skills:', skills);
+            return skills;
+        }
+
+        function consolidateSkillsData(data) {
+            // now passing array of 2 results...
+            const skillsData = data[0];
+            const industryData = data[1];
+            if (!skillsData || skillsData.length === 0) { return null; }
+            
+            const aggregatedScores = skillsData.reduce((acc, [
+                employeeId,
+                employee,
+                subsection,
+                skill,
+                rating,
+                ratingWeighted,
+                availability,
+                avail_notes,
+                avail_res
+            ]) => {
+                // If the employee ID is not yet in the accumulator, initialize it with a rating of 0 and an empty skills string
+                if (!acc[employee]) {
+                    acc[employee] = {
+                        employeeId     : employeeId,
+                        availability   : availability.toLowerCase(),
+                        avail_notes    : avail_notes,
+                        avail_res      : avail_res,
+                        weightedRating : 0,
+                        skillsList     : ''
+                    };
+                }
+
+                // Sum the rating for the current employee
+                acc[employee].weightedRating += ratingWeighted;
+
+                // Append the skill and rating to the skills string
+                acc[employee].skillsList += `${skill}-${rating}, `;
+
+                return acc;
+            }, {});
+
+            // Clean up the trailing comma and space from the skills string
+            Object.keys(aggregatedScores).forEach(employee => {
+                aggregatedScores[employee].skillsList = aggregatedScores[employee].skillsList.replace(/,\s*$/, "");
+            });
+
+            // Find the maximum rating among all employees
+            const maxRating = Math.max(...Object.values(aggregatedScores).map(employee => employee.weightedRating));
+
+            // Calculate the stack rank percentage for each employee
+            const rankedEmployees = Object.entries(aggregatedScores).map(([employee, data]) => {
+                const percentage = (data.weightedRating / maxRating) * 100;
+
+                return {
+                    employee       : employee,
+                    employeeId     : data.employeeId,
+                    availability   : data.availability,
+                    avail_notes    : data.avail_notes,
+                    avail_res      : data.avail_res,
+                    weightedRating : data.weightedRating,
+                    skillsList     : data.skillsList.replace(/,(\s+)/gm, '<br>'),
+                    stackRank      : percentage.toFixed(1) // Format to 1 decimal place
+                };
+            });
+
+            const sortedRankedEmployees = rankedEmployees.sort((a, b) => b.weightedRating - a.weightedRating);
+
+            if (industryData && industryData.length > 0) {
+                const aggregatedIndustries = industryData.reduce((acc, [
+                    employeeId,
+                    employee,
+                    industry,
+                    subindustry,
+                    rating
+                ]) => {
+                    if (!acc[employee]) {
+                        acc[employee] = {
+                            employeeId: employeeId,
+                            industryRating: rating
+                        };
+                    }
+                    return acc;
+                }, {});
+
+                const cleanedIndustries = Object.entries(aggregatedIndustries).map(([employee, data]) => {
+                    return {
+                        employee       : employee,
+                        employeeId     : data.employeeId,
+                        industryRating : parseInt(data.industryRating)
+                    };
+                });
+
+                const cleanedIndustriesMap = cleanedIndustries.reduce((acc, obj) => {
+                    acc[obj.employeeId] = obj;
+                    return acc;
+                }, {});
+
+                const combinedEmployeeData = sortedRankedEmployees.map(objA => {
+                    const match = cleanedIndustriesMap[objA.employeeId];
+                    return match ? { ...objA, industryRating: match.industryRating } : objA;
+                });
+
+                return combinedEmployeeData;
+            }
+
+            return sortedRankedEmployees;
+        }
+
+        function generateWeightedRating(rating) {
+            const weights = {
+                4: 8,
+                3: 5,
+                2: 2,
+                1: 1,
+                0: 0 // Assuming 0 maps to 0 as there's no weight provided
+            };
+
+            return weights[rating] || 0; // Default to 0 if the rating is not in the dictionary
+        }
+
+        function calculateRatingAverage(...numbers) {
+            if (numbers.length === 0) return 0; // Return 0 if no numbers are provided
+
+            const sum = numbers.reduce((acc, num) => acc + num, 0);
+            const average = sum / numbers.length;
+
+            return Math.round(average * 10) / 10; // Round to 1 decimal place
+        }
+
+        function calculateRatingStackRank(numbers) {
+            const max = Math.max(...numbers);
+            const min = Math.min(...numbers);
+
+            return numbers.map(num => {
+                const percentage = ((num - min) / (max - min)) * 100;
+                return parseFloat(percentage.toFixed(1)); // Round to 1 decimal place and convert back to a number
+            });
         }
 
         function generateRating(rating) {
-            var maxRemain = 5 - rating;
+            if (!rating) { rating = 0; }
+            var maxRemain = 4 - rating;
             var ratings = [];
             
             for (var i = 0; i < rating; i++) {
                 ratings.push(`<i class="star icon active"></i>`);
             }
 
-            for (var j = 0; j < maxRemain;j++) {
+            for (var j = 0; j < maxRemain; j++) {
                 ratings.push(`<i class="star icon"></i>`)
             }
 
             var ratingsHtml = ratings.join('');
+            shout('Ratings HTML:', ratingsHtml);
             return `<div class="ui yellow rating disabled">${ratingsHtml}</div>`;
         }
 
         function generateBodtOfWorkHtml(data) {
             if (!data || data.length === 0) { return ''; }
 
+            shout("Data for HTML table:", data);
+
             var html = [];
             var len = data.length;
             var i = 0;
 
             for (i; i < len; i++) {
-                var row = /* syntax: html */ `
+                /**
+                 * {
+                 *   "employee"
+                 *   "employeeId"
+                 *   "availability"
+                 *   "avail_notes"
+                 *   "avail_res"
+                 *   "weightedRating"
+                 *   "skillsList"
+                 *   "stackRank"
+                 *   "industryRating"
+                 * }
+                 */
+
+                const row = /* syntax: html */ `
                     <tr>
-                        <td class="single line">${data[i][1]}</td>
-                        <td>${data[i][2]}</td>
-                        <td>${data[i][3]}</td>
-                        <td>${generateRating(data[i][4])}</div></td>
-                        <td class="right aligned">${data[i][5]}</td>
+                        <td class="single line tableSkillsAssign">
+                            <button class="ui primary icon button" data-eid="${data[i]["employeeId"]}" data-ename="${data[i]["employee"]}">
+                                <i class="plus icon"></i>
+                            </button>
+                            <a href="/app/common/custom/custrecordentry.nl?rectype=1572&id=${data[i]["employeeId"]}" target="_blank">${data[i]["employee"]}</a>
+                        </td>
+                        <td class="${(data[i]["availability"]) ? ` left ${data[i]["availability"]} marked` : ''}">
+                            ${data[i]["avail_notes"]}
+                            <div class="ui fitted divider"></div>
+                            <span class="ui red text">${data[i]["avail_res"]}</span>
+                            </h5>
+                        </td>
+                        <td>
+                            <div class="ui yellow disabled rating" data-icon="star" data-rating="${data[i]["industryRating"]}" data-max-rating="4"></div>
+                        </td>
+                        <td>
+                            ${data[i]["skillsList"]}
+                        </td>
+                        <td>
+                            ${data[i]["weightedRating"]}
+                        </td>
+                        <td>
+                            <div class="ui indicating progress" data-percent="${data[i]["stackRank"]}" id="progress-${data[i]["employeeId"]}">
+                                <div class="bar">
+                                    <div class="progress"></div>
+                                </div>
+                            </div>
+                        </td>
                     </tr>
                 `
                 html.push(row);
@@ -1727,11 +2128,11 @@ var shout = function() {
             return html.join('');
         }
 
-        async function updateBodyOfWorkTable(industryId) {
+        async function getIndustryRating(industryId) {
             try {
                 const payload = await new Promise((resolve, reject) => {
                     try {
-                        const result = getBodyOfWorkData(industryId);
+                        const result = getBodyOfWorkIndustryData(industryId);
                         resolve(result);
                     } catch (error) {
                         reject(error);
@@ -1740,20 +2141,83 @@ var shout = function() {
 
                 shout("Payload received!");
 
-                // now we can use payload which should be the result of getBodyOfWorkData
-                var html = generateBodtOfWorkHtml(payload);
-                $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
-                
+                shout("Industry data:", payload);
             } catch (error) {
-                shout("Payload error:", error)
+                shout("Payload error:", error);
             }
         }
 
-        function updateBodyOfWorkTableSimple(industryId) {
-            const payload = getBodyOfWorkData(industryId);
+        /**
+         * Utility wrapper around setTimeout
+         * @param  {int}   ms       Sleep time in milliseconds
+         * @param  {func}  callback Callback function
+         */
+        function sleep(ms, callback) {
+            setTimeout(callback, ms);
+        }
 
-            var html = generateBodtOfWorkHtml(payload);
-            $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
+        function convertNameFormat(name) {
+            // Split the string by the comma and trim any extra spaces
+            let [lastname, firstname] = name.split(',').map(part => part.trim());
+
+            // Return the concatenated result in "Firstname Lastname" format
+            return `${firstname} ${lastname}`;
+        }
+
+        function updateBodyOfWorkTable(skills, industryId, tableFilters) {
+            // Add dimmer and loader
+            var dimmer = $('#tableSkillsLoader');
+            dimmer.addClass('active');
+
+            sleep(2000, function() {
+                var results = [];
+                const resultA = getBodyOfWorkSkillData(skills, tableFilters.skills);
+                const resultB = (industryId) ? getBodyOfWorkIndustryData(industryId, tableFilters.industry) : [];
+                results.push(resultA, resultB);
+
+                const skillsClean = consolidateSkillsData(results);
+                var html = generateBodtOfWorkHtml(skillsClean);
+                
+                // Update table with row data
+                $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
+                $('#bodyofwork').removeClass('celled').addClass('celled'); // Initiative a CSS refresh?
+                
+                // Update progress bars
+                $('.ui.progress').progress();
+
+                // Update ratings
+                $('.ui.rating').rating();
+
+                // Update link events
+                $('.tableSkillsAssign button').click(
+                    function(event) {
+                        event.preventDefault();
+
+                        var eid   = $(this).data('eid');
+                        var ename = $(this).data('ename');
+
+                        const newValues = [{
+                            "name"                : convertNameFormat(ename),
+                            "value"               : parseInt(eid),
+                            "description"         : "Override: Added from skills search results table",
+                            "descriptionVertical" : true
+                        }];
+
+                        const scValues = getPeopleCache();
+
+                        $('#solutionconsultant').dropdown('change values', newValues);
+                        $('#solutionconsultant').dropdown('set selected', eid);
+
+                        shout('Add employee to dropdown:', `${ename} (${eid})`);
+                    }
+                );
+
+                sleep(1000, function() {
+                    // Remove dimmer and loader
+                    dimmer.removeClass('active');
+                });
+            });
+
         }
 
         /**
@@ -1831,6 +2295,7 @@ var shout = function() {
 
             GM_SuperValue.set(`${SCRIPT_CACHE_ID}`, _peopleCache);
             GM_SuperValue.set(`${SCRIPT_CACHE_ID}_ts`, _peopleCacheTs);
+            GM_SuperValue.set(`${SCRIPT_CACHE_ID}_raw`, people);
 
             shout('People cache refreshed');
         }
@@ -1908,6 +2373,68 @@ var shout = function() {
         function setProducts(str) {
             var strArray = str.split(',');
             nlapiSetFieldValues('custrecord_sc_req_products', strArray);
+        }
+
+        /**
+         * Convert SC Product selections to corresponding Skills Matrix entries.
+         * @param  {...[int]} idsArray   One or more SC Product internal IDs
+         * @return {[array]}             Array of Skills Matrix internal IDs
+         */
+        function getProductSkills(idsArray) {
+            var legend = {
+                "2":"591", // Advanced Electronic Bank Payments
+                "3":"827", // Advanced Manufacturing
+                "4":"529", // Advanced Order Management
+                "5":"957", // AP Automation
+                "6":"957", // Bill Capture
+                "7":"956", // CPQ
+                "8":"834", // Demand Planning
+                "9":"962", // Disaster Recovery
+                "10":"985", // Dunning
+                "53":"988", // E-Invoicing
+                "12":"982", // EPM FCC
+                "13":"993", // EPM FF
+                "14":"990", // EPM NR
+                "15":"983", // EPM NSAR
+                "16":"984", // EPM NSPB
+                "17":"991", // EPM PCM
+                "18":"992", // EPM Tax
+                "19":"964", // Field Service Management
+                "20":"825", // Financial Management
+                "21":"600", // Fixed Asset Management
+                "22":"572", // Incentive Compensation
+                "23":"826", // Inventory Management
+                "25":"934", // NS Connector
+                "26":"715", // NS POS
+                "27":"968", // NSAW
+                "28":"839", // OneWorld
+                "29":"840", // OpenAir
+                "31":"652", // Payroll
+                "32":"844", // Procurement
+                "33":"846", // Quality Management 
+                "34":"929", // Rebate Management
+                "35":"979", // Revenue Management
+                "38":"708", // SuiteAnalytics Connect
+                "39":"710", // SuiteBilling
+                "40":"712", // SuiteCloud Plus
+                "41":"714", // SuiteCommerce
+                "42":"657", // SuiteCommerce Instore
+                "43":"716", // SuiteCommerce MyAccount
+                "44":"604", // SuitePeople
+                "45":"845", // SuiteProjects
+                "46":"974", // Tier
+                "48":"958", // WFM
+                "49":"738", // WIP and Routings
+                "50":"850", // WMS
+                "51":"739" // Work Orders and Assemblies
+            };
+            return idsArray.map(id => {
+                if (legend.hasOwnProperty(id)) {
+                    return legend[id];
+                } else {
+                    shout('getProductSkills: ID not found -> ', id);
+                }
+            });
         }
 
         function getRequestType() {
@@ -2213,7 +2740,49 @@ var shout = function() {
                 event.preventDefault();
                 //
             }
-        )
+        );
+
+        $('#productskillsearch').click(
+            function(event) {
+                event.preventDefault();
+
+                const products = $('#products').dropdown('get values');
+                if (!products || products.length === 0) { return false; }
+
+                const industryId   = $('#scmindustry').dropdown('get value') || null;
+                const skills       = getProductSkills(products);
+                const tableFilters = getTableFilters();
+                shout('Table filters:', tableFilters);
+                updateBodyOfWorkTable(skills, industryId, tableFilters);
+            }
+        );
+
+        // This doesn't appear to do anything different...
+        // $('#productskillsearch').click(
+        //     async function(event) {
+        //         event.preventDefault();
+
+        //         var dimmer = $('#tableSkillsLoader');                
+        //         dimmer.removeClass('active'); // start with a fresh dimmer
+
+        //         const products = $('#products').dropdown('get values');
+        //         if (!products || products.length === 0) { return false; }
+
+        //         dimmer.addClass('active'); // add in a dimmer
+
+        //         const industryId = $('#scmindustry').dropdown('get value') || null;
+        //         const skills = getProductSkills(products);
+
+        //         try {
+        //             // Step 2: Call the async function
+        //             const result = await updateBodyOfWorkTable(skills, industryId);
+        //             dimmer.removeClass('active');                    
+        //         } catch (error) {
+        //             // Handle any errors and update the DOM accordingly
+        //             console.error('Error occurred:', error);
+        //         }
+        //     }
+        // );        
 
         $('#scr-modal-request-form')
             .modal({
@@ -2239,10 +2808,6 @@ var shout = function() {
             .accordion()
         ;
 
-        $('.ui.rating')
-            .rating('disable')
-        ;
-
         $('#bodyofwork')
             .tablesort()
         ;
@@ -2257,22 +2822,17 @@ var shout = function() {
             })
         ;
 
-        var industryFld = $('#scmindustry')
+        $('.ui.search.selection.dropdown [id^=skillfilter]')
             .dropdown({
-                hideDividers: 'empty',
+                keepSearchTerm: true
             })
         ;
 
-        if (settings.includeBodyOfWork) {
-            industryFld.dropdown({
-                onChange: function(value, text, $selected) {
-                    shout(`You selected the SC Industry "${text}" with an internal ID of ${value}`);
-                    updateBodyOfWorkTable(value);
-                    // updateBodyOfWorkTableSimple(value);
-                    $('.ui.rating').rating('disable');
-                }
+        var industryFld = $('#scmindustry')
+            .dropdown({
+                hideDividers: 'empty'
             })
-        }
+        ;
 
         $('#scmsku')
             .dropdown({
