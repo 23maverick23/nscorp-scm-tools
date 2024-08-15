@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.2.0
+// @version      3.2.1
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1279,6 +1279,11 @@ var shout = function() {
                         <!-- Column Two -->
                         <div class="five wide column">
 
+                            <!-- Opp Details -->
+                            ${
+                                getRequestMetadataHrml()
+                            }
+
                             <!-- Request Details -->
                             <div class="field">
                                 <label>SC Request Details</label>
@@ -2508,6 +2513,98 @@ var shout = function() {
                     shout('getProductSkills: ID not found -> ', id);
                 }
             });
+        }
+
+        function getRegion(state) {
+            if (state === '-N/A-') { return '-Review-'; }
+
+            const eastStates = ['ME', 'NH', 'VT', 'MA', 'CT', 'RI', 'NY', 'PA', 'NJ', 'DE', 'MD', 'DC', 'WV', 'VA', 'NC', 'SC', 'GA', 'FL'];
+            const centralStates = ['ND', 'SD', 'NE', 'KS', 'OK', 'TX', 'MN', 'IA', 'MO', 'AR', 'LA', 'WI', 'IL', 'MI', 'IN', 'OH', 'KY', 'TN', 'MS', 'AL'];
+            const westStates = ['AK', 'WA', 'OR', 'CA', 'HI', 'MT', 'ID', 'NV', 'WY', 'UT', 'AZ', 'CO', 'NM'];
+            const canWestStates = ['YT', 'BC', 'NT', 'AB', 'SK'];
+            const canEastStates = ['NU', 'MB', 'ON', 'QC', 'NB', 'PE', 'NL', 'NS'];
+
+            if (eastStates.includes(state)) {
+                return 'East';
+            } else if (centralStates.includes(state)) {
+                return 'Central';
+            } else if (westStates.includes(state)) {
+                return 'West';
+            } else if (canWestStates.includes(state)) {
+                return 'CAN-West';
+            } else if (canEastStates.includes(state)) {
+                return 'CAN-East';
+            } else {
+                return '-Review-';
+            }
+        }
+
+        function getRequestMetadata() {
+            var scr = {};
+
+            scr.company       = nlapiGetFieldText('custrecord_screq_opp_company') || '-N/A-';
+            scr.companyid     = nlapiGetFieldValue('custrecord_screq_opp_company') || null;
+
+            scr.city          = nlapiLookupField('customer', scr.companyid, 'billcity', true) || '-N/A-';
+            scr.state         = nlapiLookupField('customer', scr.companyid, 'billstate', true) || '-N/A-';
+            scr.region        = getRegion(scr.state);
+
+            scr.opportunity   = nlapiGetFieldText('custrecord_screq_opportunity') || '-N/A-';
+            scr.opportunityid = nlapiGetFieldValue('custrecord_screq_opportunity') || null;
+            
+            scr.salesrep      = nlapiGetFieldText('custrecord_screq_opp_salesreproster') || '-N/A-';
+            scr.salesmgr      = nlapiGetFieldText('custrecord_sales_rep_manager') || '-N/A-';
+            
+            scr.industry      = nlapiGetFieldValue('custrecord_screq_zoominfo_industry') || '-N/A-';
+            scr.subindustry   = nlapiGetFieldValue('custrecord_screq_zoominfo_sub_industry') || '-N/A-';
+            
+            scr.url           = nlapiGetFieldValue('custrecord_screq_customer_web_address') || '-N/A-';
+            scr.linkedin      = nlapiGetFieldValue('custrecord_screq_linkedin_url') || '-N/A-';
+
+            return scr;
+        }
+
+        function getRequestMetadataHrml() {
+            var data = getRequestMetadata() || null;
+
+            if (!data) { return ''; }
+
+            var html = /* syntax: html */ `
+            <div class="ui segment">
+                <div class="ui list">
+                    <div class="item">
+                        <div class="header">Opportunity</div>
+                        <a href="/app/accounting/transactions/opprtnty.nl?id=${data.opportunityid}" target="_blank">${data.opportunity}</a>
+                    </div>
+                    <div class="item">
+                        <div class="header">Company</div>
+                        <a href="/app/common/entity/custjob.nl?id=${data.companyid}" target="_blank">${data.company}</a>
+                    </div>
+                    <div class="item">
+                        <div class="header">Company Region</div>
+                        ${data.region}: ${data.city}, ${data.state}
+                    </div>
+                    <div class="item">
+                        <div class="header">Industry</div>
+                        ${data.industry}
+                    </div>
+                    <div class="item">
+                        <div class="header">Sub-Industry</div>
+                        ${data.subindustry}
+                    </div>
+                    <div class="item">
+                        <div class="header">Website</div>
+                        <a href="${data.url}" target="_blank">${data.url}</a>
+                    </div>
+                    <div class="item">
+                        <div class="header">LinkedIn</div>
+                        <a href="${data.linkedin}" target="_blank">${data.linkedin}</a>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            return html;
         }
 
         function getRequestType() {
