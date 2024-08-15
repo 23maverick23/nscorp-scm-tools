@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.1.1
+// @version      3.2.0
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -857,9 +857,9 @@ var shout = function() {
                     (settings.showEPM === true) ? `${btnMenuEPM}` : ""
                 }
                 <div class="item">
-                    <button class="ui tiny pink labeled icon button" id="_staffmyteam" data-tooltip="Open quick staff form" data-position="bottom right">
+                    <button class="ui tiny pink labeled icon button" id="_staffmyteam" data-tooltip="Open quick assign form" data-position="bottom right">
                         <i class="users cog icon"></i>
-                        My Team
+                        Quick Assign
                     </button>
                 </div>
                 <div class="item">
@@ -900,14 +900,14 @@ var shout = function() {
             <!-- Staff My Team Modal and Form -->
             <form class="ui form overlay fullscreen modal" id="scr-modal-request-form">
                 <i class="close icon"></i>
-                <div class="header">SC Request Quick Form</div>
+                <div class="header">SC Request Quick Assign Form</div>
                 <div class="scrolling content">
 
                     <!-- Start Grid -->
                     <div class="ui stackable two column grid">
 
                         <!-- Column One -->
-                        <div class="ten wide column">
+                        <div class="eleven wide column">
 
                             <!-- SC Assign -->
                             <div class="fields">
@@ -1224,8 +1224,18 @@ var shout = function() {
                                             <label>SC Tier</label>
                                             <select class="ui fluid search dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
                                                 <option value="">Filter SC tier</option>
-                                                <option value="29">Emerging</option>
-                                                <option value="28">Upmarket</option>
+                                                <option value="29">LMM</option>
+                                                <option value="28">MM/Corp</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>SC Region</label>
+                                            <select class="ui fluid search dropdown" multiple="" name="skillfilter-scregion" id="skillfilter-scregion">
+                                                <option value="">Filter SC region</option>
+                                                <option value="48">East</option>
+                                                <option value="49">Central</option>
+                                                <option value="50">West</option>
                                             </select>
                                         </div>
 
@@ -1238,10 +1248,11 @@ var shout = function() {
                                 <!-- BOTTOM Main table -->
                                 <div class="ui bottom attached segment">
                                     
-                                    <table id="bodyofwork" class="ui compact small sortable selectable collapsing celled resizable scrolling table">
+                                    <table id="bodyofwork" class="ui compact small selectable collapsing celled resizable scrolling table">
                                         <thead>
                                             <tr>
                                                 <th class="single line">SC Name</th>
+                                                <th>Attributes</th>
                                                 <th>Availability Notes</th>
                                                 <th class="single line">Sub-Industry Fit</th>
                                                 <th>Skills Detail</th>
@@ -1250,6 +1261,11 @@ var shout = function() {
                                             </tr>
                                         </thead>
                                         <tbody></tbody>
+                                        <tfoot class="full-width">
+                                            <tr class="right aligned">
+                                                <th colspan="7" id="bodyofwork-footer">0 rows</th>
+                                            </tr>
+                                        </tfoot>
                                     </table>
 
                                 </div>
@@ -1261,7 +1277,7 @@ var shout = function() {
                         </div>
 
                         <!-- Column Two -->
-                        <div class="six wide column">
+                        <div class="five wide column">
 
                             <!-- Request Details -->
                             <div class="field">
@@ -1660,7 +1676,7 @@ var shout = function() {
             if (filterMyTeam && filterMyTeam === 'T') {
                 fSkills.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee', 'is', _ids.me));
                 fIndustry.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
-                shout('Table filter: My Team');
+                // shout('Table filter: My Team');
             }
             
             // sc vertical
@@ -1668,7 +1684,7 @@ var shout = function() {
             if (filterVertical && filterVertical.length > 0) {
                 fSkills.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee', 'anyof', filterVertical));
                 fIndustry.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'anyof', filterVertical));
-                shout('Table filter: SC Vertical');
+                // shout('Table filter: SC Vertical');
             }
             
             // sc director
@@ -1682,7 +1698,7 @@ var shout = function() {
                 case "robyn":
                     fSkills.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_ssm_skill_employee', 'is', _ids[filterDirector]));
                     fIndustry.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[filterDirector]));
-                    shout('Table filter: SC Director');
+                    // shout('Table filter: SC Director');
                     break;
                 default:
                     shout(`Invalid director name provided: ${filterDirector}.`);
@@ -1693,7 +1709,15 @@ var shout = function() {
             if (filterTier && filterTier.length > 0) {
                 fSkills.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee', 'anyof', filterTier));
                 fIndustry.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'anyof', filterTier));
-                shout('Table filter: SC Tier');
+                // shout('Table filter: SC Tier');
+            }
+
+            // sc region
+            const filterRegion = $('#skillfilter-scregion').dropdown('get values') || null;
+            if (filterRegion && filterRegion.length > 0) {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_salessubregion', 'custrecord_ssm_skill_employee', 'anyof', filterRegion));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_salessubregion', 'custrecord_sr_ind_rating_employee', 'anyof', filterRegion));
+                // shout('Table filter: SC Region');
             }
 
             filters.industry = fIndustry;
@@ -1865,6 +1889,10 @@ var shout = function() {
             columns.push(new nlobjSearchColumn('custrecord_ssm_skill_entry'));
             columns.push(new nlobjSearchColumn('custrecord_ssm_skill_rating'));
             // columns.push(new nlobjSearchColumn('custrecord_last_updated'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_olocation', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_salessubregion', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee'));
 
             // var nRating = new nlobjSearchColumn('formulanumeric', null, 'sum');
             // nRating.setFormula("TO_NUMBER(SUBSTR({custrecord_sr_ind_rating}, 1, 1))");
@@ -1887,6 +1915,10 @@ var shout = function() {
                 var availability   = result.getText('custrecord_emproster_avail', 'custrecord_ssm_skill_employee');
                 var avail_notes    = result.getValue('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee');
                 var avail_res      = result.getValue('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee');
+                var location       = result.getText('custrecord_emproster_olocation', 'custrecord_ssm_skill_employee');
+                var region         = result.getText('custrecord_emproster_salessubregion', 'custrecord_ssm_skill_employee');
+                var vertical       = result.getText('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee');
+                var tier           = result.getText('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee');
                 var subsection     = result.getText('custrecord_ssm_skill_subsection');
                 var skill          = result.getText('custrecord_ssm_skill_entry');
                 var rating         = Array.from(result.getText('custrecord_ssm_skill_rating'))[0]; // only pull in the numeric rating, not the text
@@ -1902,7 +1934,11 @@ var shout = function() {
                     ratingWeighted,
                     availability,
                     avail_notes,
-                    avail_res
+                    avail_res,
+                    location,
+                    region,
+                    vertical,
+                    tier
                 ];
 
                 skills.push(data);
@@ -1927,12 +1963,20 @@ var shout = function() {
                 ratingWeighted,
                 availability,
                 avail_notes,
-                avail_res
+                avail_res,
+                location,
+                region,
+                vertical,
+                tier
             ]) => {
                 // If the employee ID is not yet in the accumulator, initialize it with a rating of 0 and an empty skills string
                 if (!acc[employee]) {
                     acc[employee] = {
                         employeeId     : employeeId,
+                        location       : extractLocationString(location),
+                        region         : region,
+                        vertical       : vertical,
+                        tier           : tier.replace('Solution Consultant - ', ''),
                         availability   : availability.toLowerCase(),
                         avail_notes    : avail_notes,
                         avail_res      : avail_res,
@@ -1968,6 +2012,10 @@ var shout = function() {
                     availability   : data.availability,
                     avail_notes    : data.avail_notes,
                     avail_res      : data.avail_res,
+                    location       : data.location,
+                    region         : data.region,
+                    vertical       : data.vertical,
+                    tier           : data.tier,
                     weightedRating : data.weightedRating,
                     skillsList     : data.skillsList.replace(/,(\s+)/gm, '<br>'),
                     stackRank      : percentage.toFixed(1) // Format to 1 decimal place
@@ -2015,6 +2063,17 @@ var shout = function() {
             }
 
             return sortedRankedEmployees;
+        }
+
+        function extractLocationString(str) {
+            // Define the regular expression
+            const regex = /^\w{2}-\w+/i;
+            
+            // Use match() to extract the substring that matches the regex
+            const match = str.match(regex);
+            
+            // If a match is found, return the first match (or the original location if no match)
+            return match ? match[0] : str;
         }
 
         function generateWeightedRating(rating) {
@@ -2093,15 +2152,26 @@ var shout = function() {
                 const row = /* syntax: html */ `
                     <tr>
                         <td class="single line tableSkillsAssign">
-                            <button class="ui primary icon button" data-eid="${data[i]["employeeId"]}" data-ename="${data[i]["employee"]}">
+                            <button class="ui mini primary icon button" data-eid="${data[i]["employeeId"]}" data-ename="${data[i]["employee"]}">
                                 <i class="plus icon"></i>
                             </button>
                             <a href="/app/common/custom/custrecordentry.nl?rectype=1572&id=${data[i]["employeeId"]}" target="_blank">${data[i]["employee"]}</a>
                         </td>
+                        <td>
+                            <div class="ui tiny basic labels">
+                                ${(data[i]["vertical"]) ? `<div class="ui label">${data[i]["vertical"]}</div>` : ''}
+                                ${(data[i]["tier"]) ? `<div class="ui label">${data[i]["tier"]}</div>` : ''}
+                                ${(data[i]["location"]) ? `<div class="ui label">${data[i]["location"]}</div>` : ''}
+                                ${(data[i]["region"]) ? `<div class="ui label">${data[i]["region"]}</div>` : ''}
+                            </div>
+                        </td>
                         <td class="${(data[i]["availability"]) ? ` left ${data[i]["availability"]} marked` : ''}">
                             ${data[i]["avail_notes"]}
-                            <div class="ui fitted divider"></div>
-                            <span class="ui red text">${data[i]["avail_res"]}</span>
+                            ${(data[i]["avail_res"]) ? `
+                                <div class="ui fitted divider"></div>
+                                <span class="ui red text">${data[i]["avail_res"]}</span>
+                                ` : ''
+                            }
                             </h5>
                         </td>
                         <td>
@@ -2177,10 +2247,13 @@ var shout = function() {
 
                 const skillsClean = consolidateSkillsData(results);
                 var html = generateBodtOfWorkHtml(skillsClean);
+                var rowTotals = skillsClean.length || 0;
                 
                 // Update table with row data
                 $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
-                $('#bodyofwork').removeClass('celled').addClass('celled'); // Initiative a CSS refresh?
+                
+                // Update table footer
+                $('#bodyofwork-footer').html(`${rowTotals} row${(rowTotals == 1) ? '':'s'}`)
                 
                 // Update progress bars
                 $('.ui.progress').progress();
@@ -2444,6 +2517,11 @@ var shout = function() {
 
         function setRequestType() {
             nlapiSetFieldValue('custrecord_screq_type', 19, true);
+        }
+
+        function getIndustry() {
+            var id = nlapiGetFieldValue('custrecord_screq_industry');
+            return id;
         }
 
         function setIndustry(id) {
@@ -2854,7 +2932,8 @@ var shout = function() {
                 placeholder: 'Select product(s)',
                 fullTextSearch: true,
                 name: 'products',
-                match: 'text'
+                match: 'text',
+                maxSelections: 4
             })
         ;
 
@@ -2926,8 +3005,8 @@ var shout = function() {
             .form('set value', 'launchpadqual', getLaunchpadQual())
             .form('set value', 'launchpadnotes', getLaunchpadNotes())
             .form('set value', 'dateneeded', getDateNeeded())
-            .form('set defaults', 'products', [])
             .form('set value', 'products', getProducts())
+            .form('set value', 'scmindustry', getIndustry())
             .form({
                 onSuccess: function(event, fields) {
                     event.preventDefault();
