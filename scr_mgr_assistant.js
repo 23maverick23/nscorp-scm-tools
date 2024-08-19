@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.2.1
+// @version      3.2.2
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -896,6 +896,122 @@ var shout = function() {
             `
         ;
 
+        function fldIndustryHTml(id, width) {
+            return /* syntax: html */  `
+                <div class="${(width) ? width : 'sixteen'} wide required field">
+                    <label>SC Industry</label>
+                    <div class="ui fluid search selection dropdown" id="${id}">
+                        <input type="hidden" name="${id}">
+                        <div class="default text">Provide an SC Industry</div>
+                        <i class="dropdown icon"></i>
+                        <div class="menu">
+                            <div class="header">Agriculture</div>
+                            <div class="item" data-value="9">Agriculture (Agriculture)</div>
+                            <div class="header">Business Services</div>
+                            <div class="item" data-value="1">Advertising & Marketing (Business Services)</div>
+                            <div class="item" data-value="8">Business Services (Business Services)</div>
+                            <div class="item" data-value="4">Commercial Printing (Business Services)</div>
+                            <div class="item" data-value="3">Custom Software & IT Services (IT VAR) (Business Services)</div>
+                            <div class="item" data-value="2">HR & Staffing (Business Services)</div>
+                            <div class="item" data-value="6">Research & Development (Business Services)</div>
+                            <div class="header">Construction</div>
+                            <div class="item" data-value="10">Architecture, Engineering & Design (Construction)</div>
+                            <div class="item" data-value="7">Construction (Construction)</div>
+                            <div class="item" data-value="5">Consumer Services (Consumer Services)</div>
+                            <div class="header">Education</div>
+                            <div class="item" data-value="11">Campus Bookstores (Education)</div>
+                            <div class="item" data-value="12">Education (Education)</div>
+                            <div class="header">Energy, Utilities & Waste</div>
+                            <div class="item" data-value="16">Energy, Utilities & Waste (Energy, Utilities & Waste)</div>
+                            <div class="header">Finance</div>
+                            <div class="item" data-value="17">Cryptocurrency (Finance)</div>
+                            <div class="item" data-value="13">Finance (Finance)</div>
+                            <div class="item" data-value="14">Lending & Brokerage (Finance)</div>
+                            <div class="item" data-value="15">Venture Capital & Private Equity (Finance)</div>
+                            <div class="header">Government</div>
+                            <div class="item" data-value="20">Government: Federal (Government)</div>
+                            <div class="item" data-value="18">Government: State/Local (Government)</div>
+                            <div class="header">Healthcare Services</div>
+                            <div class="item" data-value="19">Elderly Care Services (Healthcare Services)</div>
+                            <div class="item" data-value="21">Federally Qualified Healthcare (FQHC) (Healthcare Services)</div>
+                            <div class="item" data-value="22">Healthcare Services (Healthcare Services)</div>
+                            <div class="item" data-value="101">Life Sciences and Biotech (Healthcare Services)</div>
+                            <div class="item" data-value="24">Medical Laboratories & Imaging Centers (Healthcare Services)</div>
+                            <div class="item" data-value="23">Veterinary Services (Healthcare Services)</div>
+                            <div class="header">Holding Companies & Conglomerates</div>
+                            <div class="item" data-value="25">Holding Companies & Conglomerates (Holding Companies & Conglomerates)</div>
+                            <div class="header">Hospitality</div>
+                            <div class="item" data-value="27">Cultural & Informational Centers (Hospitality)</div>
+                            <div class="item" data-value="29">Gambling & Gaming (Hospitality)</div>
+                            <div class="item" data-value="26">Hospitality (Hospitality)</div>
+                            <div class="item" data-value="30">Lodging & Resorts (Hospitality)</div>
+                            <div class="item" data-value="28">Museums & Art Galleries (Hospitality)</div>
+                            <div class="item" data-value="39">Performing Arts Theaters (Hospitality)</div>
+                            <div class="item" data-value="31">Restaurants (Hospitality)</div>
+                            <div class="item" data-value="32">Sports Teams & Leagues (Hospitality)</div>
+                            <div class="header">Hospitals & Physicians Clinics</div>
+                            <div class="item" data-value="34">Dental Offices (Hospitals & Physicians Clinics)</div>
+                            <div class="item" data-value="33">Hospitals & Physicians Clinics (Hospitals & Physicians Clinics)</div>
+                            <div class="item" data-value="35">Physicians Clinics (Hospitals & Physicians Clinics)</div>
+                            <div class="header">Insurance</div>
+                            <div class="item" data-value="36">Insurance (Insurance)</div>
+                            <div class="header">Law Firms & Legal Services</div>
+                            <div class="item" data-value="37">Law Firms & Legal Services (Law Firms & Legal Services)</div>
+                            <div class="header">Manufacturing</div>
+                            <div class="item" data-value="40">Aerospace & Defense (Manufacturing)</div>
+                            <div class="item" data-value="41">Food & Beverage (Manufacturing)</div>
+                            <div class="item" data-value="42">Industrial Machinery & Equipment (Manufacturing)</div>
+                            <div class="item" data-value="43">Job Shop (Manufacturing)</div>
+                            <div class="item" data-value="44">Life Sciences and Biotech (Manufacturing)</div>
+                            <div class="item" data-value="38">Manufacturing (Manufacturing)</div>
+                            <div class="item" data-value="45">Medical Devices & Equipment (Manufacturing)</div>
+                            <div class="item" data-value="46">Pharmaceuticals (Manufacturing)</div>
+                            <div class="item" data-value="47">Textiles & Apparel (Manufacturing)</div>
+                            <div class="item" data-value="48">Wholesale (Manufacturing)</div>
+                            <div class="header">Media & Internet</div>
+                            <div class="item" data-value="50">Broadcasting (Media & Internet)</div>
+                            <div class="item" data-value="49">Media & Internet (Media & Internet)</div>
+                            <div class="item" data-value="52">Motion Picture and Sound Recording (Media & Internet)</div>
+                            <div class="item" data-value="51">Promotional Products (Media & Internet)</div>
+                            <div class="item" data-value="53">Publishing (Media & Internet)</div>
+                            <div class="header">Minerals & Mining</div>
+                            <div class="item" data-value="54">Minerals & Mining (Minerals & Mining)</div>
+                            <div class="header">Organizations</div>
+                            <div class="item" data-value="56">Food Pantry, Food Share, Food Bank (Organizations)</div>
+                            <div class="item" data-value="57">Non-Profit Organizations & Charitable Foundations (Organizations)</div>
+                            <div class="item" data-value="55">Organizations (Organizations)</div>
+                            <div class="item" data-value="58">Religious Organizations (Organizations)</div>
+                            <div class="header">Real Estate</div>
+                            <div class="item" data-value="59">Real Estate (Real Estate)</div>
+                            <div class="header">Retail</div>
+                            <div class="item" data-value="61">Apparel & Accessories Retail (Retail)</div>
+                            <div class="item" data-value="62">Automobile Deals (Retail)</div>
+                            <div class="item" data-value="63">Automobile Part Stores (Retail)</div>
+                            <div class="item" data-value="64">Convenience Stores, Gas Stations & Liquor Stores (Retail)</div>
+                            <div class="item" data-value="65">Drug Stores & Pharmacies (Retail)</div>
+                            <div class="item" data-value="66">Franchise (Retail)</div>
+                            <div class="item" data-value="67">Grocery Retail (Retail)</div>
+                            <div class="item" data-value="68">Home Improvement & Hardware Retail (Retail)</div>
+                            <div class="item" data-value="60">Retail (Retail)</div>
+                            <div class="item" data-value="69">Vitamins Supplements & Health Stores (Retail)</div>
+                            <div class="item" data-value="70">Wholesale (Retail)</div>
+                            <div class="header">Software</div>
+                            <div class="item" data-value="72">Cryptocurrency (Software)</div>
+                            <div class="item" data-value="77">Platform (Software)</div>
+                            <div class="item" data-value="71">Software (Software)</div>
+                            <div class="item" data-value="73">Software with Inventory, Usage, Subscriptions (Software)</div>
+                            <div class="header">Telecommunications</div>
+                            <div class="item" data-value="74">Telecommunications (Telecommunications)</div>
+                            <div class="header">Transportation</div>
+                            <div class="item" data-value="76">Freight & Logistics Services (Transportation)</div>
+                            <div class="item" data-value="75">Transportation (Transportation)</div>
+                        </div>
+                    </div>
+                </div>
+                `
+            ;
+        }
+
         var modalContentRequestForm = /* syntax: html */ `
             <!-- Staff My Team Modal and Form -->
             <form class="ui form overlay fullscreen modal" id="scr-modal-request-form">
@@ -946,116 +1062,7 @@ var shout = function() {
                             </div>
 
                             <div class="fields">
-                                <div class="twelve wide required field">
-                                    <label>SC Industry</label>
-                                    <div class="ui fluid search selection dropdown" id="scmindustry">
-                                        <input type="hidden" name="scmindustry">
-                                        <div class="default text">Provide an SC Industry</div>
-                                        <i class="dropdown icon"></i>
-                                        <div class="menu">
-                                            <div class="header">Agriculture</div>
-                                            <div class="item" data-value="9">Agriculture (Agriculture)</div>
-                                            <div class="header">Business Services</div>
-                                            <div class="item" data-value="1">Advertising & Marketing (Business Services)</div>
-                                            <div class="item" data-value="8">Business Services (Business Services)</div>
-                                            <div class="item" data-value="4">Commercial Printing (Business Services)</div>
-                                            <div class="item" data-value="3">Custom Software & IT Services (IT VAR) (Business Services)</div>
-                                            <div class="item" data-value="2">HR & Staffing (Business Services)</div>
-                                            <div class="item" data-value="6">Research & Development (Business Services)</div>
-                                            <div class="header">Construction</div>
-                                            <div class="item" data-value="10">Architecture, Engineering & Design (Construction)</div>
-                                            <div class="item" data-value="7">Construction (Construction)</div>
-                                            <div class="item" data-value="5">Consumer Services (Consumer Services)</div>
-                                            <div class="header">Education</div>
-                                            <div class="item" data-value="11">Campus Bookstores (Education)</div>
-                                            <div class="item" data-value="12">Education (Education)</div>
-                                            <div class="header">Energy, Utilities & Waste</div>
-                                            <div class="item" data-value="16">Energy, Utilities & Waste (Energy, Utilities & Waste)</div>
-                                            <div class="header">Finance</div>
-                                            <div class="item" data-value="17">Cryptocurrency (Finance)</div>
-                                            <div class="item" data-value="13">Finance (Finance)</div>
-                                            <div class="item" data-value="14">Lending & Brokerage (Finance)</div>
-                                            <div class="item" data-value="15">Venture Capital & Private Equity (Finance)</div>
-                                            <div class="header">Government</div>
-                                            <div class="item" data-value="20">Government: Federal (Government)</div>
-                                            <div class="item" data-value="18">Government: State/Local (Government)</div>
-                                            <div class="header">Healthcare Services</div>
-                                            <div class="item" data-value="19">Elderly Care Services (Healthcare Services)</div>
-                                            <div class="item" data-value="21">Federally Qualified Healthcare (FQHC) (Healthcare Services)</div>
-                                            <div class="item" data-value="22">Healthcare Services (Healthcare Services)</div>
-                                            <div class="item" data-value="101">Life Sciences and Biotech (Healthcare Services)</div>
-                                            <div class="item" data-value="24">Medical Laboratories & Imaging Centers (Healthcare Services)</div>
-                                            <div class="item" data-value="23">Veterinary Services (Healthcare Services)</div>
-                                            <div class="header">Holding Companies & Conglomerates</div>
-                                            <div class="item" data-value="25">Holding Companies & Conglomerates (Holding Companies & Conglomerates)</div>
-                                            <div class="header">Hospitality</div>
-                                            <div class="item" data-value="27">Cultural & Informational Centers (Hospitality)</div>
-                                            <div class="item" data-value="29">Gambling & Gaming (Hospitality)</div>
-                                            <div class="item" data-value="26">Hospitality (Hospitality)</div>
-                                            <div class="item" data-value="30">Lodging & Resorts (Hospitality)</div>
-                                            <div class="item" data-value="28">Museums & Art Galleries (Hospitality)</div>
-                                            <div class="item" data-value="39">Performing Arts Theaters (Hospitality)</div>
-                                            <div class="item" data-value="31">Restaurants (Hospitality)</div>
-                                            <div class="item" data-value="32">Sports Teams & Leagues (Hospitality)</div>
-                                            <div class="header">Hospitals & Physicians Clinics</div>
-                                            <div class="item" data-value="34">Dental Offices (Hospitals & Physicians Clinics)</div>
-                                            <div class="item" data-value="33">Hospitals & Physicians Clinics (Hospitals & Physicians Clinics)</div>
-                                            <div class="item" data-value="35">Physicians Clinics (Hospitals & Physicians Clinics)</div>
-                                            <div class="header">Insurance</div>
-                                            <div class="item" data-value="36">Insurance (Insurance)</div>
-                                            <div class="header">Law Firms & Legal Services</div>
-                                            <div class="item" data-value="37">Law Firms & Legal Services (Law Firms & Legal Services)</div>
-                                            <div class="header">Manufacturing</div>
-                                            <div class="item" data-value="40">Aerospace & Defense (Manufacturing)</div>
-                                            <div class="item" data-value="41">Food & Beverage (Manufacturing)</div>
-                                            <div class="item" data-value="42">Industrial Machinery & Equipment (Manufacturing)</div>
-                                            <div class="item" data-value="43">Job Shop (Manufacturing)</div>
-                                            <div class="item" data-value="44">Life Sciences and Biotech (Manufacturing)</div>
-                                            <div class="item" data-value="38">Manufacturing (Manufacturing)</div>
-                                            <div class="item" data-value="45">Medical Devices & Equipment (Manufacturing)</div>
-                                            <div class="item" data-value="46">Pharmaceuticals (Manufacturing)</div>
-                                            <div class="item" data-value="47">Textiles & Apparel (Manufacturing)</div>
-                                            <div class="item" data-value="48">Wholesale (Manufacturing)</div>
-                                            <div class="header">Media & Internet</div>
-                                            <div class="item" data-value="50">Broadcasting (Media & Internet)</div>
-                                            <div class="item" data-value="49">Media & Internet (Media & Internet)</div>
-                                            <div class="item" data-value="52">Motion Picture and Sound Recording (Media & Internet)</div>
-                                            <div class="item" data-value="51">Promotional Products (Media & Internet)</div>
-                                            <div class="item" data-value="53">Publishing (Media & Internet)</div>
-                                            <div class="header">Minerals & Mining</div>
-                                            <div class="item" data-value="54">Minerals & Mining (Minerals & Mining)</div>
-                                            <div class="header">Organizations</div>
-                                            <div class="item" data-value="56">Food Pantry, Food Share, Food Bank (Organizations)</div>
-                                            <div class="item" data-value="57">Non-Profit Organizations & Charitable Foundations (Organizations)</div>
-                                            <div class="item" data-value="55">Organizations (Organizations)</div>
-                                            <div class="item" data-value="58">Religious Organizations (Organizations)</div>
-                                            <div class="header">Real Estate</div>
-                                            <div class="item" data-value="59">Real Estate (Real Estate)</div>
-                                            <div class="header">Retail</div>
-                                            <div class="item" data-value="61">Apparel & Accessories Retail (Retail)</div>
-                                            <div class="item" data-value="62">Automobile Deals (Retail)</div>
-                                            <div class="item" data-value="63">Automobile Part Stores (Retail)</div>
-                                            <div class="item" data-value="64">Convenience Stores, Gas Stations & Liquor Stores (Retail)</div>
-                                            <div class="item" data-value="65">Drug Stores & Pharmacies (Retail)</div>
-                                            <div class="item" data-value="66">Franchise (Retail)</div>
-                                            <div class="item" data-value="67">Grocery Retail (Retail)</div>
-                                            <div class="item" data-value="68">Home Improvement & Hardware Retail (Retail)</div>
-                                            <div class="item" data-value="60">Retail (Retail)</div>
-                                            <div class="item" data-value="69">Vitamins Supplements & Health Stores (Retail)</div>
-                                            <div class="item" data-value="70">Wholesale (Retail)</div>
-                                            <div class="header">Software</div>
-                                            <div class="item" data-value="72">Cryptocurrency (Software)</div>
-                                            <div class="item" data-value="77">Platform (Software)</div>
-                                            <div class="item" data-value="71">Software (Software)</div>
-                                            <div class="item" data-value="73">Software with Inventory, Usage, Subscriptions (Software)</div>
-                                            <div class="header">Telecommunications</div>
-                                            <div class="item" data-value="74">Telecommunications (Telecommunications)</div>
-                                            <div class="header">Transportation</div>
-                                            <div class="item" data-value="76">Freight & Logistics Services (Transportation)</div>
-                                            <div class="item" data-value="75">Transportation (Transportation)</div>
-                                        </div>
-                                    </div>
-                                </div>
+                                ${fldIndustryHTml('scmindustry', 'twelve')}
 
                                 <div class="four wide required field">
                                     <label>Proposed SKU</label>
@@ -1339,7 +1346,10 @@ var shout = function() {
                         <textarea rows="3" name="scmstaffingnotes" id="scmstaffingnotes" placeholder="Why are you sending this cross-vertical?"></textarea>
                     </div>
 
-                    <!-- Assign As Lead -->
+                    <!-- Industry -->
+                    ${fldIndustryHTml('scmindustry-popup')}
+                
+                    <!-- Emerging -->
                     <div class="field">
                         <div class="ui toggle checkbox">
                             <input type="checkbox" name="needsemg" id="needsemg" tabindex="0" class="hidden">
@@ -3009,6 +3019,12 @@ var shout = function() {
             })
         ;
 
+        var industryFld = $('#scmindustry-popup')
+            .dropdown({
+                hideDividers: 'empty'
+            })
+        ;
+
         $('#scmsku')
             .dropdown({
                 allowAdditions: true,
@@ -3160,8 +3176,9 @@ var shout = function() {
                 onSuccess: function(event, fields) {
                     event.preventDefault();
                     var allFields = $scrNotesForm.form('get values');
-                    var staffingNotes = allFields.scmstaffingnotes;
-                    var needsEmerging = allFields.needsemg;
+                    var staffingNotes = allFields['scmstaffingnotes'];
+                    var needsEmerging = allFields['needsemg'];
+                    var scIndustry    = allFields['scmindustry-popup'];
 
                     var myDate = new Date();
                     var myDateString = ('0' + (myDate.getMonth()+1)).slice(-2) + '/' + ('0' + myDate.getDate()).slice(-2) + '/' + myDate.getFullYear();
@@ -3171,6 +3188,7 @@ var shout = function() {
                     setStaffingNotes(scmStaffingNotesPretty);
 
                     if (needsEmerging === "on") { setEmg(); }
+                    if (scIndustry) { setIndustry(scIndustry); }
                 }
             })
         ;
