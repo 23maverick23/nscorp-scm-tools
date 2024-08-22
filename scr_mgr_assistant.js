@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.2.2
+// @version      3.2.3
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1255,25 +1255,7 @@ var shout = function() {
                                 <!-- BOTTOM Main table -->
                                 <div class="ui bottom attached segment">
                                     
-                                    <table id="bodyofwork" class="ui compact small selectable collapsing celled resizable scrolling table">
-                                        <thead>
-                                            <tr>
-                                                <th class="single line">SC Name</th>
-                                                <th>Attributes</th>
-                                                <th>Availability Notes</th>
-                                                <th class="single line">Sub-Industry Fit</th>
-                                                <th>Skills Detail</th>
-                                                <th class="single line">Weighted Rating</th>
-                                                <th class="single line">Stack Rank</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                        <tfoot class="full-width">
-                                            <tr class="right aligned">
-                                                <th colspan="7" id="bodyofwork-footer">0 rows</th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                    <table id="bodyofwork" class="ui compact small selectable collapsing celled resizable scrolling table"></table>
 
                                 </div>
 
@@ -2140,12 +2122,40 @@ var shout = function() {
             return `<div class="ui yellow rating disabled">${ratingsHtml}</div>`;
         }
 
-        function generateBodtOfWorkHtml(data) {
+        function generateBodtOfWorkHtml(data, industryId) {
             if (!data || data.length === 0) { return ''; }
 
             shout("Data for HTML table:", data);
 
             var html = [];
+
+            var tableHead = /* syntax: html */ `
+                    <thead>
+                        <tr>
+                            <th class="single line">SC Name</th>
+                            <th>Attributes</th>
+                            <th>Availability Notes</th>
+                            ${(industryId) ? `<th class="single line">Sub-Industry Fit</th>` : ``}
+                            <th>Skills Detail</th>
+                            <th class="single line">Weighted Rating</th>
+                            <th class="single line">Stack Rank</th>
+                        </tr>
+                    </thead>
+                    `
+                ;
+                
+            var tableFoot = /* syntax: html */ `
+                    <tbody></tbody>
+                    <tfoot class="full-width">
+                        <tr class="right aligned">
+                            <th colspan="${(industryId) ? 7 : 6}" id="bodyofwork-footer">0 rows</th>
+                        </tr>
+                    </tfoot>
+                    `
+                ;
+
+            html.push(tableHead);
+
             var len = data.length;
             var i = 0;
 
@@ -2189,9 +2199,11 @@ var shout = function() {
                             }
                             </h5>
                         </td>
-                        <td>
+                        ${(industryId) ? 
+                        `<td>
                             <div class="ui yellow disabled rating" data-icon="star" data-rating="${data[i]["industryRating"]}" data-max-rating="4"></div>
-                        </td>
+                        </td>` : ``
+                        }
                         <td>
                             ${data[i]["skillsList"]}
                         </td>
@@ -2210,6 +2222,7 @@ var shout = function() {
                 html.push(row);
             }
 
+            html.push(tableFoot);
             return html.join('');
         }
 
@@ -2261,11 +2274,11 @@ var shout = function() {
                 results.push(resultA, resultB);
 
                 const skillsClean = consolidateSkillsData(results);
-                var html = generateBodtOfWorkHtml(skillsClean);
+                var html = generateBodtOfWorkHtml(skillsClean, industryId);
                 var rowTotals = skillsClean.length || 0;
                 
                 // Update table with row data
-                $('#bodyofwork tbody').replaceWith(`<tbody>${html}</tbody>`);
+                $('#bodyofwork').html(`${html}`);
                 
                 // Update table footer
                 $('#bodyofwork-footer').html(`${rowTotals} row${(rowTotals == 1) ? '':'s'}`)
