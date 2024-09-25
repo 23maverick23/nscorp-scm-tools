@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.2.3
+// @version      3.3.1
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -263,7 +263,7 @@ var shout = function() {
          * from the gm_config script. There isn't a nicer way to remove and reset all the classnames
          * to follow fomantic naming, so we will live with this mess for now...
          */
-        
+
         $(`#${SCRIPT_ID}`).attr('style', ''); // remove default form styling
         $(`#${SCRIPT_ID}_header`).attr('class', 'ui center aligned large header'); // remove default header styling
         $(`#${SCRIPT_ID} .section_header.center`).attr('class', 'ui header'); // remove default section header styling
@@ -567,7 +567,7 @@ var shout = function() {
                     <div class="list">
                         <div class="item">
                             ${
-                                (settings.includeAvailability) ? 
+                                (settings.includeAvailability) ?
                                 `<div class="right floated content">
                                     <div class="header" style="font-weight:bold;text-align:right;">${this.weight}</div>
                                     <div class="description" style="text-align:right;">${this.inplay} in play</div>
@@ -638,21 +638,144 @@ var shout = function() {
         * |                                                                                         |
         * +=========================================================================================+
         */
-       
+
        // Set UI settings
         GM_addStyle(/* syntax: css */ `
             :root {
-                --menu-color-red    : #db282830;
-                --menu-color-orange : #f5a97f45;
-                --menu-color-yellow : #eed49f70;
-                --menu-color-green  : #21ba4530;
-                --menu-color-blue   : #54c8ff30;
-                --menu-color-purple : #673ab730;
-                --menu-color-pink   : #f5bde670;
+                --menu-color-red    : #C6463330; /* #db282830; */
+                --menu-color-orange : #AD562B30; /* #f5a97f45; */
+                --menu-color-yellow : #E2BF6B30; /* #eed49f70; */
+                --menu-color-green  : #85B49730; /* #21ba4530; */
+                --menu-color-blue   : #558DA230; /* #54c8ff30; */
+                --menu-color-purple : #60698830; /* #673ab730; */
+                --menu-color-pink   : #FB867530; /* #f5bde670; */
+
+                --btn-color-red    : hsl(8, 59%, 49%); /* #C74634; */
+                --btn-color-orange : hsl(20, 60%, 42%); /* #D39E5C; */
+                --btn-color-yellow : hsl(42, 67%, 65%); /* #E2C06B; */
+                --btn-color-green  : hsl(143, 24%, 61%); /* #86B596; */
+                --btn-color-teal   : var(--btn-color-purple); /* hsl(176, 33%, 38%); */
+                --btn-color-blue   : hsl(196, 31%, 48%); /* #81B2C3; */
+                --btn-color-purple : hsl(227, 17%, 45%); /* #606988; */
+                --btn-color-pink   : hsl(8, 94%, 72%); /* #FB8675; */
+                --btn-color-black  : hsl(199, 40%, 35%); /* #36677D; */
+
+                --btn-hover-color-red    : hsl(8, 59%, 30%);
+                --btn-hover-color-orange : hsl(20, 60%, 30%);
+                --btn-hover-color-yellow : hsl(42, 67%, 50%);
+                --btn-hover-color-green  : hsl(143, 24%, 45%);
+                --btn-hover-color-teal   : var(--btn-hover-color-purple) ; /* hsl(176, 33%, 20%); */
+                --btn-hover-color-blue   : hsl(196, 31%, 30%);
+                --btn-hover-color-purple : hsl(227, 17%, 35%);
+                --btn-hover-color-pink   : hsl(8, 94%, 60%);
+                --btn-hover-color-black  : hsl(199, 40%, 25%);
             }
             .ui.menu {
                 box-shadow:0 1px 2px 0 rgba(34, 36, 38, 0.15) !important;
                 background-color: var(--menu-color-${settings.theme}) !important;
+                border-radius: 0 !important;
+            }
+
+            .ui.toggle.checkbox input:checked ~ label::before {
+                background-color: var(--btn-color-blue) !important;
+            }
+
+            .ui a {
+                color: var(--nsn-uif-redwood-color-light-text-link) !important;
+                fill: var(--nsn-uif-redwood-color-light-text-link) !important;
+            }
+            .ui a:hover {
+                text-decoration: underline !important;
+                color: var(--nsn-uif-redwood-color-light-text-link) !important;
+                fill: var(--nsn-uif-redwood-color-light-text-link) !important;
+            }
+
+            .ui.red.button {
+                background-color: var(--btn-color-red) !important;
+                color: #fff !important;
+            }
+            .ui.red.button:hover {
+                background-color: var(--btn-hover-color-red) !important;
+            }
+            .ui.orange.button {
+                background-color: var(--btn-color-orange) !important;
+                color: #fff !important;
+            }
+            .ui.orange.button:hover {
+                background-color: var(--btn-hover-color-orange) !important;
+            }
+            .ui.yellow.button {
+                background-color: var(--btn-color-yellow) !important;
+                color: #fff !important;
+            }
+            .ui.yellow.button:hover {
+                background-color: var(--btn-hover-color-yellow) !important;
+            }
+            .ui.green.button {
+                background-color: var(--btn-color-green) !important;
+                color: #fff !important;
+            }
+            .ui.green.button:hover {
+                background-color: var(--btn-hover-color-green) !important;
+            }
+            .ui.teal.button {
+                background-color: var(--btn-color-teal) !important;
+                color: #fff !important;
+            }
+            .ui.teal.button:hover {
+                background-color: var(--btn-hover-color-teal) !important;
+            }
+            .ui.blue.button,
+            .ui.primary.button {
+                background-color: var(--btn-color-blue) !important;
+                color: #fff !important;
+            }
+            .ui.blue.button:hover,
+            .ui.primary.button:hover {
+                background-color: var(--btn-hover-color-blue) !important;
+            }
+            .ui.purple.button {
+                background-color: var(--btn-color-purple) !important;
+                color: #fff !important;
+            }
+            .ui.purple.button:hover {
+                background-color: var(--btn-hover-color-purple) !important;
+            }
+            .ui.pink.button {
+                background-color: var(--btn-color-pink) !important;
+                color: #fff !important;
+            }
+            .ui.pink.button:hover {
+                background-color: var(--btn-hover-color-pink) !important;
+            }
+            .ui.black.button {
+                background-color: var(--btn-color-black) !important;
+                color: #fff !important;
+            }
+            .ui.black.button:hover {
+                background-color: var(--btn-hover-color-black) !important;
+            }
+
+            .orange.icon {
+                color: var(--btn-color-orange) !important;
+            }
+            .blue.icon {
+                color: var(--btn-color-blue) !important;
+            }
+            .green.icon {
+                color: var(--btn-color-green) !important;
+            }
+            .teal.icon {
+                color: var(--btn-color-teal) !important;
+            }
+            .yellow.icon {
+                color: var(--btn-color-yellow) !important;
+            }
+            .red.icon {
+                color: var(--btn-color-red) !important;
+            }
+            .black.icon {
+                color: var(--btn-color-black) !important;
             }
         `);
 
@@ -1214,7 +1337,7 @@ var shout = function() {
                                                 <option value="45">Tiger</option>
                                             </select>
                                         </div>
-                                    
+
                                         <div class="field">
                                             <label>SC Director</label>
                                             <select class="ui fluid search dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
@@ -1226,7 +1349,7 @@ var shout = function() {
                                                 <option value="jeff">Jeff</option>
                                             </select>
                                         </div>
-                                    
+
                                         <div class="field">
                                             <label>SC Tier</label>
                                             <select class="ui fluid search dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
@@ -1247,14 +1370,14 @@ var shout = function() {
                                         </div>
 
                                     </div>
-                                    
+
                                     <div class="ui blue button" id="productskillsearch"><i class="icon search"></i>Search Skills</div>
-                                    
+
                                 </div>
 
                                 <!-- BOTTOM Main table -->
                                 <div class="ui bottom attached segment">
-                                    
+
                                     <table id="bodyofwork" class="ui compact small selectable collapsing celled resizable scrolling table"></table>
 
                                 </div>
@@ -1330,7 +1453,7 @@ var shout = function() {
 
                     <!-- Industry -->
                     ${fldIndustryHTml('scmindustry-popup')}
-                
+
                     <!-- Emerging -->
                     <div class="field">
                         <div class="ui toggle checkbox">
@@ -1362,7 +1485,7 @@ var shout = function() {
         // nsBtnBar.children('td').append('<td></td>');
         // $('#main_form table table').children('tbody').eq(1).append(btnMenu);
         // $('#sc-mgr-assistant-col').attr('colspan', nsBtnBarCnt);
-        
+
         function createHashtags() {
             let hashtags = settings.hashtags;
             if (!hashtags || hashtags.length == 0) { return ''; }
@@ -1377,7 +1500,9 @@ var shout = function() {
 
         let pageTitle = $('.uir-page-title-secondline');
         let pageTitleNew = $('.uir-page-title');
-        (pageTitle.length !== 0) ? pageTitle.append(btnMenu) : pageTitleNew.append(btnMenu);
+        let pageTitleBig = $('.uir-page-title-record');
+        // (pageTitle.length !== 0) ? pageTitle.append(btnMenu) : pageTitleNew.append(btnMenu);
+        pageTitleBig.after(btnMenu);
 
 
         /**
@@ -1398,14 +1523,14 @@ var shout = function() {
             var curUser = nlapiGetUser();
             var filters = [];
             filters.push(new nlobjSearchFilter('custrecord_emproster_emp', null, 'is', curUser));
-            
+
             var columns = [];
             columns.push(new nlobjSearchColumn('custrecord_emproster_vertical_amo'));
             columns.push(new nlobjSearchColumn('custrecord_emproster_salesteam'));
             columns.push(new nlobjSearchColumn('custrecord_emproster_salesregion'));
             columns.push(new nlobjSearchColumn('custrecord_emproster_sales_tier'));
             columns.push(new nlobjSearchColumn('name'));
-            
+
             var results = nlapiSearchRecord('customrecord_emproster', null, filters, columns);
             return results[0];
         }
@@ -1675,7 +1800,7 @@ var shout = function() {
                 fIndustry.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
                 // shout('Table filter: My Team');
             }
-            
+
             // sc vertical
             const filterVertical = $('#skillfilter-scvertical').dropdown('get values') || null;
             if (filterVertical && filterVertical.length > 0) {
@@ -1683,10 +1808,10 @@ var shout = function() {
                 fIndustry.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'anyof', filterVertical));
                 // shout('Table filter: SC Vertical');
             }
-            
+
             // sc director
             const filterDirector = $('#skillfilter-scdirector').dropdown('get value') || null;
-            
+
             switch (filterDirector) {
                 case "jeff":
                 case "karl":
@@ -1700,7 +1825,7 @@ var shout = function() {
                 default:
                     shout(`Invalid director name provided: ${filterDirector}.`);
             }
-            
+
             // sc tier
             const filterTier = $('#skillfilter-sctier').dropdown('get values') || null;
             if (filterTier && filterTier.length > 0) {
@@ -1950,7 +2075,7 @@ var shout = function() {
             const skillsData = data[0];
             const industryData = data[1];
             if (!skillsData || skillsData.length === 0) { return null; }
-            
+
             const aggregatedScores = skillsData.reduce((acc, [
                 employeeId,
                 employee,
@@ -2065,10 +2190,10 @@ var shout = function() {
         function extractLocationString(str) {
             // Define the regular expression
             const regex = /^\w{2}-\w+/i;
-            
+
             // Use match() to extract the substring that matches the regex
             const match = str.match(regex);
-            
+
             // If a match is found, return the first match (or the original location if no match)
             return match ? match[0] : str;
         }
@@ -2108,7 +2233,7 @@ var shout = function() {
             if (!rating) { rating = 0; }
             var maxRemain = 4 - rating;
             var ratings = [];
-            
+
             for (var i = 0; i < rating; i++) {
                 ratings.push(`<i class="star icon active"></i>`);
             }
@@ -2143,7 +2268,7 @@ var shout = function() {
                     </thead>
                     `
                 ;
-                
+
             var tableFoot = /* syntax: html */ `
                     <tbody></tbody>
                     <tfoot class="full-width">
@@ -2199,7 +2324,7 @@ var shout = function() {
                             }
                             </h5>
                         </td>
-                        ${(industryId) ? 
+                        ${(industryId) ?
                         `<td>
                             <div class="ui yellow disabled rating" data-icon="star" data-rating="${data[i]["industryRating"]}" data-max-rating="4"></div>
                         </td>` : ``
@@ -2276,13 +2401,13 @@ var shout = function() {
                 const skillsClean = consolidateSkillsData(results);
                 var html = generateBodtOfWorkHtml(skillsClean, industryId);
                 var rowTotals = skillsClean.length || 0;
-                
+
                 // Update table with row data
                 $('#bodyofwork').html(`${html}`);
-                
+
                 // Update table footer
                 $('#bodyofwork-footer').html(`${rowTotals} row${(rowTotals == 1) ? '':'s'}`)
-                
+
                 // Update progress bars
                 $('.ui.progress').progress();
 
@@ -2355,7 +2480,7 @@ var shout = function() {
                      * cache and only refresh that data after a duration specified
                      * in settings. For maths purposes, 3600000 ms = 1 hr.
                      */
-                    
+
                     const cacheDurationHrs = parseInt(settings.cacheRefreshDelay) || 6;
                     const cacheDurationMs  = cacheDurationHrs * 3600000;
 
@@ -2512,7 +2637,7 @@ var shout = function() {
                 "29":"840", // OpenAir
                 "31":"652", // Payroll
                 "32":"844", // Procurement
-                "33":"846", // Quality Management 
+                "33":"846", // Quality Management
                 "34":"929", // Rebate Management
                 "35":"979", // Revenue Management
                 "38":"708", // SuiteAnalytics Connect
@@ -2574,13 +2699,13 @@ var shout = function() {
 
             scr.opportunity   = nlapiGetFieldText('custrecord_screq_opportunity') || '-N/A-';
             scr.opportunityid = nlapiGetFieldValue('custrecord_screq_opportunity') || null;
-            
+
             scr.salesrep      = nlapiGetFieldText('custrecord_screq_opp_salesreproster') || '-N/A-';
             scr.salesmgr      = nlapiGetFieldText('custrecord_sales_rep_manager') || '-N/A-';
-            
+
             scr.industry      = nlapiGetFieldValue('custrecord_screq_zoominfo_industry') || '-N/A-';
             scr.subindustry   = nlapiGetFieldValue('custrecord_screq_zoominfo_sub_industry') || '-N/A-';
-            
+
             scr.url           = nlapiGetFieldValue('custrecord_screq_customer_web_address') || '-N/A-';
             scr.linkedin      = nlapiGetFieldValue('custrecord_screq_linkedin_url') || '-N/A-';
 
@@ -2960,7 +3085,7 @@ var shout = function() {
         //     async function(event) {
         //         event.preventDefault();
 
-        //         var dimmer = $('#tableSkillsLoader');                
+        //         var dimmer = $('#tableSkillsLoader');
         //         dimmer.removeClass('active'); // start with a fresh dimmer
 
         //         const products = $('#products').dropdown('get values');
@@ -2974,13 +3099,13 @@ var shout = function() {
         //         try {
         //             // Step 2: Call the async function
         //             const result = await updateBodyOfWorkTable(skills, industryId);
-        //             dimmer.removeClass('active');                    
+        //             dimmer.removeClass('active');
         //         } catch (error) {
         //             // Handle any errors and update the DOM accordingly
         //             console.error('Error occurred:', error);
         //         }
         //     }
-        // );        
+        // );
 
         $('#scr-modal-request-form')
             .modal({
@@ -3123,7 +3248,7 @@ var shout = function() {
         * |                                                     |
         * +=====================================================+
         */
-        
+
         // SCR Request Form
         var $scrRequestForm = $('#scr-modal-request-form')
             .form('set value', 'screquestdetails', getRequestDetails())
