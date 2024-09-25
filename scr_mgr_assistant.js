@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.3.1
+// @version      3.3.2
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -670,16 +670,20 @@ var shout = function() {
                 --btn-hover-color-pink   : hsl(8, 94%, 60%);
                 --btn-hover-color-black  : hsl(199, 40%, 25%);
             }
+
+            /* MAIN MENU */
             .ui.menu {
                 box-shadow:0 1px 2px 0 rgba(34, 36, 38, 0.15) !important;
                 background-color: var(--menu-color-${settings.theme}) !important;
                 border-radius: 0 !important;
             }
 
+            /* CHECKBOX TOGGLE */
             .ui.toggle.checkbox input:checked ~ label::before {
                 background-color: var(--btn-color-blue) !important;
             }
 
+            /* LINKS */
             .ui a {
                 color: var(--nsn-uif-redwood-color-light-text-link) !important;
                 fill: var(--nsn-uif-redwood-color-light-text-link) !important;
@@ -690,6 +694,50 @@ var shout = function() {
                 fill: var(--nsn-uif-redwood-color-light-text-link) !important;
             }
 
+            /* PROGRESS BAR */
+            .ui.indicating.progress[data-percent^="1"] .bar,
+            .ui.indicating.progress[data-percent^="2"] .bar {
+              background-color: #C74734 !important;
+            }
+            .ui.indicating.progress[data-percent^="3"] .bar {
+              background-color: #AD562B !important;
+            }
+            .ui.indicating.progress[data-percent^="4"] .bar,
+            .ui.indicating.progress[data-percent^="5"] .bar {
+              background-color: #D39E5C !important;
+            }
+            .ui.indicating.progress[data-percent^="6"] .bar {
+              background-color: #E2BF6B !important;
+            }
+            .ui.indicating.progress[data-percent^="7"] .bar,
+            .ui.indicating.progress[data-percent^="8"] .bar {
+              background-color: #86B598 !important;
+            }
+            .ui.indicating.progress[data-percent^="9"] .bar,
+            .ui.indicating.progress[data-percent^="100"] .bar {
+              background-color: #769C6E !important;
+            }
+
+            .ui.table td[class*="red marked"].left,
+            .ui.table tr[class*="red marked"].left {
+              box-shadow: 0.4em 0 0 0 #C74734 inset !important;
+            }
+            .ui.table td[class*="yellow marked"].left,
+            .ui.table tr[class*="yellow marked"].left {
+              box-shadow: 0.4em 0 0 0 #D39E5C inset !important;
+            }
+            .ui.table td[class*="green marked"].left,
+            .ui.table tr[class*="green marked"].left {
+              box-shadow: 0.4em 0 0 0 #86B598 inset !important;
+            }
+
+            /* STAR RATING */
+            .ui.yellow.rating .active.icon {
+              color: #E2BF6B !important;
+              text-shadow: 0 -1px 0 #D39E5C, -1px 0 0 #D39E5C, 0 1px 0 #D39E5C, 1px 0 0 #D39E5C !important;
+            }
+
+            /* CUSTOM BUTTONS */
             .ui.red.button {
                 background-color: var(--btn-color-red) !important;
                 color: #fff !important;
@@ -756,6 +804,21 @@ var shout = function() {
                 background-color: var(--btn-hover-color-black) !important;
             }
 
+            /* LOADER */
+            .ui.ui.blue.elastic.loader::before,
+            .ui.blue.basic.elastic.loading.button::before,
+            .ui.blue.basic.elastic.loading.button::after,
+            .ui.ui.ui.blue.elastic.loading:not(.segment):not(.segments):not(.card)::before,
+            .ui.ui.ui.blue.elastic.loading .input > i.icon::before,
+            .ui.ui.ui.ui.blue.elastic.loading > i.icon::before,
+            .ui.ui.ui.ui.blue.loading:not(.usual):not(.button)::after,
+            .ui.ui.ui.ui.blue.loading .input > i.icon::after,
+            .ui.ui.ui.ui.blue.loading > i.icon::after,
+            .ui.ui.ui.blue.loader::after {
+              color: #558CA1 !important;
+            }
+
+            /* LEGEND ICONS */
             .orange.icon {
                 color: var(--btn-color-orange) !important;
             }
@@ -2269,8 +2332,8 @@ var shout = function() {
                     `
                 ;
 
+            // removed empty <tbody></tbody> tag at top
             var tableFoot = /* syntax: html */ `
-                    <tbody></tbody>
                     <tfoot class="full-width">
                         <tr class="right aligned">
                             <th colspan="${(industryId) ? 7 : 6}" id="bodyofwork-footer">0 rows</th>
