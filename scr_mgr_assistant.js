@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.3.3
+// @version      3.3.4
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -2187,6 +2187,34 @@ var shout = function() {
             // Find the maximum rating among all employees
             const maxRating = Math.max(...Object.values(aggregatedScores).map(employee => employee.weightedRating));
 
+            function createSkillsHtmlTable(skillsString) {
+                // Split the string into individual skill-rating pairs
+                const skillsArray = skillsString.split(", ");
+            
+                // Start creating the table structure
+                let tableHTML = '<table class="ui basic collapsing table">';
+            
+                // Loop through each skill-rating pair
+                skillsArray.forEach(skillRating => {
+                    // Split each pair into skill and rating
+                    let [skill, rating] = skillRating.split("-");
+                    
+                    // Add a row for each skill and rating
+                    tableHTML += `
+                        <tr>
+                            <td>${skill}</td>
+                            <td>${rating}</td>
+                        </tr>
+                    `;
+                });
+            
+                // Close the table tag
+                tableHTML += '</table>';
+            
+                // Return the generated table HTML
+                return tableHTML;
+            }
+
             // Calculate the stack rank percentage for each employee
             const rankedEmployees = Object.entries(aggregatedScores).map(([employee, data]) => {
                 const percentage = (data.weightedRating / maxRating) * 100;
@@ -2202,7 +2230,7 @@ var shout = function() {
                     vertical       : data.vertical,
                     tier           : data.tier,
                     weightedRating : data.weightedRating,
-                    skillsList     : data.skillsList.replace(/,(\s+)/gm, '<br>'),
+                    skillsList     : createSkillsHtmlTable(data.skillsList),
                     stackRank      : percentage.toFixed(1) // Format to 1 decimal place
                 };
             });
@@ -2323,9 +2351,8 @@ var shout = function() {
                             <th class="single line">SC Name</th>
                             <th>Attributes</th>
                             <th>Availability Notes</th>
-                            ${(industryId) ? `<th class="single line">Sub-Industry Fit</th>` : ``}
+                            ${(industryId) ? `<th class="single line">Industry Fit</th>` : ``}
                             <th>Skills Detail</th>
-                            <th class="single line">Weighted Rating</th>
                             <th class="single line">Stack Rank</th>
                         </tr>
                     </thead>
@@ -2395,14 +2422,17 @@ var shout = function() {
                         <td>
                             ${data[i]["skillsList"]}
                         </td>
-                        <td>
-                            ${data[i]["weightedRating"]}
-                        </td>
-                        <td>
-                            <div class="ui indicating progress" data-percent="${data[i]["stackRank"]}" id="progress-${data[i]["employeeId"]}">
-                                <div class="bar">
-                                    <div class="progress"></div>
+                        <td class="center aligned">
+                            <div class="ui statistic">
+                                <div class="value">
+                                    ${data[i]["weightedRating"]}
                                 </div>
+                                <div class="label">
+                                    Point${(data[i]["weightedRating"] == 1) ? '' : 's'}
+                                </div>
+                            </div>
+                            <div class="ui tiny indicating progress" data-percent="${data[i]["stackRank"]}" id="progress-${data[i]["employeeId"]}">
+                                <div class="bar"></div>
                             </div>
                         </td>
                     </tr>
