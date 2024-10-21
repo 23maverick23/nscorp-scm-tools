@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.3.4
+// @version      3.3.5
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1202,6 +1202,7 @@ var shout = function() {
             <!-- Staff My Team Modal and Form -->
             <form class="ui form overlay fullscreen modal" id="scr-modal-request-form">
                 <i class="close icon"></i>
+                <div style="padding-top: 8px;background-image: url('/assets/@uif-js/component/6.0.38/resources/img/systemheader/color-strip-netsuite.png');background-repeat: repeat-x;background-position: left top;"></div>
                 <div class="header">SC Request Quick Assign Form</div>
                 <div class="scrolling content">
 
