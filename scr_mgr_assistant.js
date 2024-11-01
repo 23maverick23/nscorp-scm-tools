@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.3.5
+// @version      3.3.6
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -2934,6 +2934,11 @@ var shout = function() {
             nlapiSetFieldValue('custrecord_sc_complex_flag', 2);
         }
 
+        function getHashtags() {
+            // Get hashtags string
+            return nlapiGetFieldValue('custrecord_screq_hashtags') || '';
+        }
+
         function setHashtags(hashtags) {
             // Set hashtags to string
             nlapiSetFieldValue('custrecord_screq_hashtags', hashtags);
@@ -3353,6 +3358,7 @@ var shout = function() {
             .form('set value', 'dateneeded', getDateNeeded())
             .form('set value', 'products', getProducts())
             .form('set value', 'scmindustry', getIndustry())
+            .form('set value', 'hashtags', getHashtags())
             .form({
                 onSuccess: function(event, fields) {
                     event.preventDefault();
