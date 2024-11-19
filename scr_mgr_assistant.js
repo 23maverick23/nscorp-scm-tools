@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.3.6
+// @version      3.3.7
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -3398,7 +3398,6 @@ var shout = function() {
                         `Competitors: ${allFields.scmcompetitors}\n` +
                         `---\n` +
                         `Why We Win: \n` +
-                        `Why We Lose: \n` +
                         `Red Flags: ${allFields.scmredflags}\n` +
                         `---\n\n` +
                         `${myDateString} - Staffed deal ${initials}`
