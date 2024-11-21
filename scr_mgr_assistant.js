@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.3.6
+// @version      3.4.0
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1086,10 +1086,10 @@ var shout = function() {
             return /* syntax: html */  `
                 <div class="${(width) ? width : 'sixteen'} wide required field">
                     <label>SC Industry</label>
-                    <div class="ui fluid search selection dropdown" id="${id}">
+                    <div class="ui fluid search selection clearable dropdown" id="${id}">
                         <input type="hidden" name="${id}">
-                        <div class="default text">Provide an SC Industry</div>
                         <i class="dropdown icon"></i>
+                        <div class="default text">Provide an SC Industry</div>
                         <div class="menu">
                             <div class="header">Agriculture</div>
                             <div class="item" data-value="9">Agriculture (Agriculture)</div>
@@ -1253,19 +1253,19 @@ var shout = function() {
 
                                 <div class="four wide required field">
                                     <label>Proposed SKU</label>
-                                    <div class="ui fluid search selection dropdown" id="scmsku">
+                                    <div class="ui fluid search selection clearable dropdown" id="scmsku">
                                         <input type="hidden" name="scmsku">
-                                        <div class="default text">Choose a SKU</div>
                                         <i class="dropdown icon"></i>
+                                        <div class="default text">Choose a SKU</div>
                                         <div class="menu">
                                             <div class="item" data-value="Svcs Std/Prm">Svcs Std/Prm</div>
                                             <div class="item" data-value="FF Std/Prm">FF Std/Prm</div>
                                             <div class="item" data-value="SW Std/Prm">SW Std/Prm</div>
                                             <div class="item" data-value="WD Std/Prm">WD Std/Prm</div>
                                             <div class="item" data-value="MFG Std/Prm">MFG Std/Prm</div>
-                                            <div class="item" data-value="OpenAir Std/Prm">OpenAir Std/Prm</div>
                                             <div class="item" data-value="Healthcare Std/Prm">Healthcare Std/Prm</div>
                                             <div class="item" data-value="NFP Std/Prm">NFP Std/Prm</div>
+                                            <div class="item" data-value="SPP/OpenAir Only">SPP/OpenAir Only</div>
                                             <div class="item" data-value="Starter">Starter</div>
                                         </div>
                                     </div>
@@ -1384,7 +1384,7 @@ var shout = function() {
                                     <div class="four fields">
                                         <div class="field">
                                             <label>My Team</label>
-                                            <select class="ui fluid search dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
+                                            <select class="ui fluid clearable search dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
                                                 <option value="">Limit to my team</option>
                                                 <option value="T">Yes</option>
                                                 <option value="F">No</option>
@@ -1393,7 +1393,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Vertical</label>
-                                            <select class="ui fluid search dropdown" multiple="" name="skillfilter-scvertical" id="skillfilter-scvertical">
+                                            <select class="ui fluid clearable search dropdown" multiple="" name="skillfilter-scvertical" id="skillfilter-scvertical">
                                                 <option value="">Filter SC vertical</option>
                                                 <option value="5">General Business</option>
                                                 <option value="58">Products</option>
@@ -1404,7 +1404,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Director</label>
-                                            <select class="ui fluid search dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
+                                            <select class="ui fluid clearable search dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
                                                 <option value="">Filter SC director</option>
                                                 <option value="karl">Karl</option>
                                                 <option value="rebecca">Rebecca</option>
@@ -1416,7 +1416,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Tier</label>
-                                            <select class="ui fluid search dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
+                                            <select class="ui fluid clearable search dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
                                                 <option value="">Filter SC tier</option>
                                                 <option value="29">LMM</option>
                                                 <option value="28">MM/Corp</option>
@@ -1425,7 +1425,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Region</label>
-                                            <select class="ui fluid search dropdown" multiple="" name="skillfilter-scregion" id="skillfilter-scregion">
+                                            <select class="ui fluid clearable search dropdown" multiple="" name="skillfilter-scregion" id="skillfilter-scregion">
                                                 <option value="">Filter SC region</option>
                                                 <option value="48">East</option>
                                                 <option value="49">Central</option>
@@ -1442,7 +1442,7 @@ var shout = function() {
                                 <!-- BOTTOM Main table -->
                                 <div class="ui bottom attached segment">
 
-                                    <table id="bodyofwork" class="ui compact small selectable collapsing celled resizable scrolling table"></table>
+                                    <table id="bodyofwork" class="ui compact small selectable sortable celled table"></table>
 
                                 </div>
 
@@ -1747,6 +1747,7 @@ var shout = function() {
             filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', null, 'is', teamId));
             filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', null, 'is', regId));
             filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', null, 'is', 25)); // this should filter to QB = Solution Consultant
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rdept', null, 'is', 482)); // Sales & Marketing : HQ - (n) : Solution Consultant - (n)
 
             if (settings.filterMe === true) {
                 filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', null, 'is', _ids.me));
@@ -2216,27 +2217,82 @@ var shout = function() {
                 return tableHTML;
             }
 
+            function availabilityRanking(text) {
+                text = text || null;
+                let rank = 0;
+                switch(text) {
+                    case 'green': 
+                        rank = 3;
+                        break;
+                    case 'yellow': 
+                        rank = 2;
+                        break;
+                    case 'red': 
+                        rank = 1;
+                        break;
+                    default: 
+                        rank = 0;
+                }
+                return rank;
+            }
+
+              /**
+             * 
+             * @param {array} employees -> this should be an array of employee objects
+             * @param {array} sortingCriteria - this should be an array of array sorting criteria in the format [param, asc/desc]
+             * @returns {array}
+             *
+             * const sortingCriteria = [
+             *   ['industryRating', 'desc'],
+             *   ['availabilityRanking', 'desc'],
+             *   ['stackRank', 'desc']
+             * ];
+             */
+            function customSortEmployees(employees, sortingCriteria) {
+                return employees.sort((a, b) => {
+                    for (const criteria of sortingCriteria) {
+                        const [field, order] = criteria;
+                        if (a[field] === b[field]) {
+                            continue;
+                        }
+                        if (order === 'desc') {
+                            return b[field] - a[field];
+                        } else {
+                            return a[field] - b[field];
+                        }
+                    }
+                    return 0; // All criteria are equal, keep original order
+                });
+            }
+
             // Calculate the stack rank percentage for each employee
-            const rankedEmployees = Object.entries(aggregatedScores).map(([employee, data]) => {
+            let rankedEmployees = Object.entries(aggregatedScores).map(([employee, data]) => {
                 const percentage = (data.weightedRating / maxRating) * 100;
 
                 return {
-                    employee       : employee,
-                    employeeId     : data.employeeId,
-                    availability   : data.availability,
-                    avail_notes    : data.avail_notes,
-                    avail_res      : data.avail_res,
-                    location       : data.location,
-                    region         : data.region,
-                    vertical       : data.vertical,
-                    tier           : data.tier,
-                    weightedRating : data.weightedRating,
-                    skillsList     : createSkillsHtmlTable(data.skillsList),
-                    stackRank      : percentage.toFixed(1) // Format to 1 decimal place
+                    employee            : employee,
+                    employeeId          : data.employeeId,
+                    availability        : data.availability,
+                    availabilityRanking : availabilityRanking(data.availability),
+                    avail_notes         : data.avail_notes,
+                    avail_res           : data.avail_res,
+                    location            : data.location,
+                    region              : data.region,
+                    vertical            : data.vertical,
+                    tier                : data.tier,
+                    weightedRating      : data.weightedRating,
+                    skillsList          : createSkillsHtmlTable(data.skillsList),
+                    stackRank           : percentage.toFixed(1)                    // Format to 1 decimal place
                 };
             });
 
-            const sortedRankedEmployees = rankedEmployees.sort((a, b) => b.weightedRating - a.weightedRating);
+            var sortingCriteria = [
+                ['availabilityRanking', 'desc'],
+                ['stackRank', 'desc']
+            ];
+
+            // move sorting into statemnent below...
+            // const sortedRankedEmployees = rankedEmployees.sort((a, b) => b.weightedRating - a.weightedRating);
 
             if (industryData && industryData.length > 0) {
                 const aggregatedIndustries = industryData.reduce((acc, [
@@ -2268,15 +2324,25 @@ var shout = function() {
                     return acc;
                 }, {});
 
-                const combinedEmployeeData = sortedRankedEmployees.map(objA => {
+                rankedEmployees = rankedEmployees.map(objA => {
                     const match = cleanedIndustriesMap[objA.employeeId];
                     return match ? { ...objA, industryRating: match.industryRating } : objA;
                 });
 
-                return combinedEmployeeData;
+                sortingCriteria = [
+                    ['industryRating', 'desc'],
+                    ['availabilityRanking', 'desc'],
+                    ['stackRank', 'desc']
+                ];
+
             }
 
-            return sortedRankedEmployees;
+            const filteredEmployees = rankedEmployees.filter(employee => {
+                return employee.industryRating !== undefined && employee.industryRating !== 0;
+            });
+
+            const sortedFiltereEmployees = customSortEmployees(filteredEmployees, sortingCriteria);
+            return sortedFiltereEmployees;
         }
 
         function extractLocationString(str) {
@@ -2351,10 +2417,10 @@ var shout = function() {
                         <tr>
                             <th class="single line">SC Name</th>
                             <th>Attributes</th>
-                            <th>Availability Notes</th>
-                            ${(industryId) ? `<th class="single line">Industry Fit</th>` : ``}
+                            <th class="sorted descending">Availability Notes ${(industryId) ? `(2)` : `(1)`}</th>
+                            ${(industryId) ? `<th class="single line sorted descending">Industry Fit (1)</th>` : ``}
                             <th>Skills Detail</th>
-                            <th class="single line">Stack Rank</th>
+                            <th class="single line sorted descending">Stack Rank ${(industryId) ? `(3)` : `(2)`}</th>
                         </tr>
                     </thead>
                     `
@@ -2493,8 +2559,11 @@ var shout = function() {
                 results.push(resultA, resultB);
 
                 const skillsClean = consolidateSkillsData(results);
-                var html = generateBodtOfWorkHtml(skillsClean, industryId);
-                var rowTotals = skillsClean.length || 0;
+                var   html        = generateBodtOfWorkHtml(skillsClean, industryId);
+                var   rowTotals   = skillsClean.length || 0;
+                
+                // Add table styling
+                // $('#bodyofwork').css('min-height', '600px');
 
                 // Update table with row data
                 $('#bodyofwork').html(`${html}`);
@@ -3253,13 +3322,15 @@ var shout = function() {
 
         var industryFld = $('#scmindustry')
             .dropdown({
-                hideDividers: 'empty'
+                hideDividers : 'empty',
+                clearable: true
             })
         ;
 
         var industryFld = $('#scmindustry-popup')
             .dropdown({
-                hideDividers: 'empty'
+                hideDividers: 'empty',
+                clearable: true
             })
         ;
 
