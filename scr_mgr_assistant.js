@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.4.1
+// @version      3.4.2
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1381,16 +1381,16 @@ var shout = function() {
                                 </div>
 
                                 <!-- TOP Help text -->
-                                <div class="ui top attached secondary segment">
-                                    <p>Need help narrowing down an SC? Select an SC Industry and at least one Product to search and rank Body of Work data below. Use the filters to control which SCs should be returned.</p>
+                                <div class="ui top attached secondary segment" style="border-top: 2px solid var(--btn-color-blue)">
+                                    <p><i class="question circle icon"></i> Need help narrowing down an SC? Select at least one (1) Product above, and optionally set an SC Industry, to search and rank Body of Work data below. Use the filters to control which SCs should be considered.</p>
                                 </div>
 
                                 <!-- MIDDLE Filters and buttons -->
                                 <div class="ui attached segment">
-                                    <div class="four fields">
+                                    <div class="six fields">
                                         <div class="field">
                                             <label>My Team</label>
-                                            <select class="ui fluid clearable search dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
+                                            <select class="ui fluid clearable dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
                                                 <option value="">Limit to my team</option>
                                                 <option value="T">Yes</option>
                                                 <option value="F">No</option>
@@ -1399,7 +1399,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Vertical</label>
-                                            <select class="ui fluid clearable search dropdown" multiple="" name="skillfilter-scvertical" id="skillfilter-scvertical">
+                                            <select class="ui fluid clearable dropdown" multiple="" name="skillfilter-scvertical" id="skillfilter-scvertical">
                                                 <option value="">Filter SC vertical</option>
                                                 <option value="5">General Business</option>
                                                 <option value="58">Products</option>
@@ -1410,7 +1410,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Director</label>
-                                            <select class="ui fluid clearable search dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
+                                            <select class="ui fluid clearable dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
                                                 <option value="">Filter SC director</option>
                                                 <option value="karl">Karl</option>
                                                 <option value="rebecca">Rebecca</option>
@@ -1422,7 +1422,7 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Tier</label>
-                                            <select class="ui fluid clearable search dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
+                                            <select class="ui fluid clearable dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
                                                 <option value="">Filter SC tier</option>
                                                 <option value="29">LMM</option>
                                                 <option value="28">MM/Corp</option>
@@ -1431,11 +1431,20 @@ var shout = function() {
 
                                         <div class="field">
                                             <label>SC Region</label>
-                                            <select class="ui fluid clearable search dropdown" multiple="" name="skillfilter-scregion" id="skillfilter-scregion">
+                                            <select class="ui fluid clearable dropdown" multiple="" name="skillfilter-scregion" id="skillfilter-scregion">
                                                 <option value="">Filter SC region</option>
                                                 <option value="48">East</option>
                                                 <option value="49">Central</option>
                                                 <option value="50">West</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>Results Sorting</label>
+                                            <select class="ui fluid dropdown" name="skillfilter-sorting" id="skillfilter-sorting">
+                                                <option value="ias">Industry > Availability > Skills</option>
+                                                <option value="ais">Availability > Industry > Skills</option>
+                                                <option value="sia">Skills > Industry > Availability</option>
                                             </select>
                                         </div>
 
@@ -1913,8 +1922,12 @@ var shout = function() {
                 // shout('Table filter: SC Region');
             }
 
+            // sorting
+            const filterSorting = $('#skillfilter-sorting').dropdown('get value') || 'ias';
+
             filters.industry = fIndustry;
             filters.skills = fSkills;
+            filters.sorting = filterSorting;
 
             return filters;
         }
@@ -2078,6 +2091,7 @@ var shout = function() {
             columns.push(new nlobjSearchColumn('custrecord_emproster_avail', 'custrecord_ssm_skill_employee'));
             columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee'));
             columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee'));
             columns.push(new nlobjSearchColumn('custrecord_ssm_skill_subsection'));
             columns.push(new nlobjSearchColumn('custrecord_ssm_skill_entry'));
             columns.push(new nlobjSearchColumn('custrecord_ssm_skill_rating'));
@@ -2105,6 +2119,7 @@ var shout = function() {
                 var id             = result.getId();
                 var employee       = result.getText('custrecord_ssm_skill_employee');
                 var employeeId     = result.getText('internalid', 'custrecord_ssm_skill_employee');
+                var manager        = result.getText('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee');
                 var availability   = result.getText('custrecord_emproster_avail', 'custrecord_ssm_skill_employee');
                 var avail_notes    = result.getValue('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee');
                 var avail_res      = result.getValue('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee');
@@ -2121,6 +2136,7 @@ var shout = function() {
                 var data = [
                     employeeId,
                     employee,
+                    manager,
                     subsection,
                     skill,
                     rating,
@@ -2141,7 +2157,7 @@ var shout = function() {
             return skills;
         }
 
-        function consolidateSkillsData(data) {
+        function consolidateSkillsData(data, sortKey) {
             // now passing array of 2 results...
             const skillsData = data[0];
             const industryData = data[1];
@@ -2150,6 +2166,7 @@ var shout = function() {
             const aggregatedScores = skillsData.reduce((acc, [
                 employeeId,
                 employee,
+                manager,
                 subsection,
                 skill,
                 rating,
@@ -2166,6 +2183,7 @@ var shout = function() {
                 if (!acc[employee]) {
                     acc[employee] = {
                         employeeId     : employeeId,
+                        manager        : manager,
                         location       : extractLocationString(location),
                         region         : region,
                         vertical       : vertical,
@@ -2278,6 +2296,7 @@ var shout = function() {
                 return {
                     employee            : employee,
                     employeeId          : data.employeeId,
+                    manager             : data.manager,
                     availability        : data.availability,
                     availabilityRanking : availabilityRanking(data.availability),
                     avail_notes         : data.avail_notes,
@@ -2296,6 +2315,13 @@ var shout = function() {
                 ['availabilityRanking', 'desc'],
                 ['stackRank', 'desc']
             ];
+
+            if (sortKey && sortKey === 'sia') {
+                sortingCriteria = [
+                    ['stackRank', 'desc'],
+                    ['availabilityRanking', 'desc']
+                ];
+            }
 
             // move sorting into statemnent below...
             // const sortedRankedEmployees = rankedEmployees.sort((a, b) => b.weightedRating - a.weightedRating);
@@ -2341,7 +2367,28 @@ var shout = function() {
                     ['stackRank', 'desc']
                 ];
 
+                if (sortKey && sortKey === 'ais') {
+                    sortingCriteria = [
+                        ['availabilityRanking', 'desc'],
+                        ['industryRating', 'desc'],
+                        ['stackRank', 'desc']
+                    ];
+                } else if (sortKey && sortKey === 'sia') {
+                    sortingCriteria = [
+                        ['stackRank', 'desc'],
+                        ['industryRating', 'desc'],
+                        ['availabilityRanking', 'desc']
+                    ];
+                }
+
             }
+
+            rankedEmployees = rankedEmployees.map(employee => {
+                if (employee.industryRating === undefined) {
+                    employee.industryRating = 0;
+                }
+                return employee;
+            });
 
             if (settings.removeIndustry === true) {
                 // Filter out employees with empty or 0 industry ratings
@@ -2424,12 +2471,13 @@ var shout = function() {
             var tableHead = /* syntax: html */ `
                     <thead>
                         <tr>
-                            <th class="single line">SC Name</th>
+                            <th></th>
+                            <th class="single line">SC Name & Mgr</th>
                             <th>Attributes</th>
-                            <th class="sorted descending">Availability Notes ${(industryId) ? `(2)` : `(1)`}</th>
-                            ${(industryId) ? `<th class="single line sorted descending">Industry Fit (1)</th>` : ``}
+                            <th class="sorted descending">Availability Notes</th>
+                            ${(industryId) ? `<th class="single line sorted descending">Industry Fit</th>` : ``}
                             <th>Skills Detail</th>
-                            <th class="single line sorted descending">Stack Rank ${(industryId) ? `(3)` : `(2)`}</th>
+                            <th class="single line sorted descending">Stack Rank</th>
                         </tr>
                     </thead>
                     `
@@ -2439,7 +2487,7 @@ var shout = function() {
             var tableFoot = /* syntax: html */ `
                     <tfoot class="full-width">
                         <tr class="right aligned">
-                            <th colspan="${(industryId) ? 7 : 6}" id="bodyofwork-footer">0 rows</th>
+                            <th colspan="${(industryId) ? 8 : 7}" id="bodyofwork-footer">0 rows</th>
                         </tr>
                     </tfoot>
                     `
@@ -2467,12 +2515,15 @@ var shout = function() {
 
                 const row = /* syntax: html */ `
                     <tr>
-                        <td class="single line tableSkillsAssign">
-                            <button class="ui mini primary icon button" data-eid="${data[i]["employeeId"]}" data-ename="${data[i]["employee"]}">
+                        <td class="center aligned tableSkillsAssign">
+                            <button class="ui mini primary icon button" data-eid="${data[i]["employeeId"]}" data-ename="${data[i]["employee"]}" data-tooltip="Assign user to request" data-position="right center">
                                 <i class="plus icon"></i>
                             </button>
-                            <a href="/app/common/custom/custrecordentry.nl?rectype=1572&id=${data[i]["employeeId"]}" target="_blank">${data[i]["employee"]}</a>
                         </td>
+                        <td>
+                            <a href="/app/common/custom/custrecordentry.nl?rectype=1572&id=${data[i]["employeeId"]}" target="_blank">${data[i]["employee"]}</a>
+                            <br/>
+                            <span style="font-style:italic;">${data[i]["manager"]}</span>
                         <td>
                             <div class="ui tiny basic labels">
                                 ${(data[i]["vertical"]) ? `<div class="ui label">${data[i]["vertical"]}</div>` : ''}
@@ -2567,7 +2618,7 @@ var shout = function() {
                 const resultB = (industryId) ? getBodyOfWorkIndustryData(industryId, tableFilters.industry) : [];
                 results.push(resultA, resultB);
 
-                const skillsClean = consolidateSkillsData(results);
+                const skillsClean = consolidateSkillsData(results, tableFilters.sorting);
                 var   html        = generateBodtOfWorkHtml(skillsClean, industryId);
                 var   rowTotals   = skillsClean.length || 0;
                 
