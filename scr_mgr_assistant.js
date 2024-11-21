@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.4.0
+// @version      3.4.1
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -175,6 +175,11 @@ var shout = function() {
         },
         'includeAvailability': {
             'label': 'Include SC engagement workload data in dropdown',
+            'type': 'checkbox',
+            'default': false
+        },
+        'removeIndustry': {
+            'label': 'Remove SCs with 0 or empty industry ratings',
             'type': 'checkbox',
             'default': false
         },
@@ -614,6 +619,7 @@ var shout = function() {
             initials                  : gmc.get('initials'),
             showDebug                 : gmc.get('showDebug'),
             includeAvailability       : gmc.get('includeAvailability'),
+            removeIndustry            : gmc.get('removeIndustry'),
             sortAvailabilityBy        : gmc.get('sortAvailabilityBy'),
             sortAvailabilityDirection : gmc.get('sortAvailabilityDirection'),
             includeBodyOfWork         : gmc.get('includeBodyOfWork'),
@@ -2337,11 +2343,14 @@ var shout = function() {
 
             }
 
-            const filteredEmployees = rankedEmployees.filter(employee => {
-                return employee.industryRating !== undefined && employee.industryRating !== 0;
-            });
+            if (settings.removeIndustry === true) {
+                // Filter out employees with empty or 0 industry ratings
+                rankedEmployees = rankedEmployees.filter(employee => {
+                    return employee.industryRating !== undefined && employee.industryRating !== 0;
+                });
+            }
 
-            const sortedFiltereEmployees = customSortEmployees(filteredEmployees, sortingCriteria);
+            const sortedFiltereEmployees = customSortEmployees(rankedEmployees, sortingCriteria);
             return sortedFiltereEmployees;
         }
 
