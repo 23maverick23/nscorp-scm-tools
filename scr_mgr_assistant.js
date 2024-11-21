@@ -3469,7 +3469,6 @@ var shout = function() {
                         `Competitors: ${allFields.scmcompetitors}\n` +
                         `---\n` +
                         `Why We Win: \n` +
-                        `Why We Lose: \n` +
                         `Red Flags: ${allFields.scmredflags}\n` +
                         `---\n\n` +
                         `${myDateString} - Staffed deal ${initials}`
