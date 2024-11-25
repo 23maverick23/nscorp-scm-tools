@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.4.2
+// @version      3.4.3
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1387,7 +1387,7 @@ var shout = function() {
 
                                 <!-- MIDDLE Filters and buttons -->
                                 <div class="ui attached segment">
-                                    <div class="six fields">
+                                    <div class="fields">
                                         <div class="field">
                                             <label>My Team</label>
                                             <select class="ui fluid clearable dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
@@ -1472,7 +1472,7 @@ var shout = function() {
 
                             <!-- Opp Details -->
                             ${
-                                getRequestMetadataHrml()
+                                getRequestMetadataHtml()
                             }
 
                             <!-- Request Details -->
@@ -1929,6 +1929,8 @@ var shout = function() {
             filters.skills = fSkills;
             filters.sorting = filterSorting;
 
+            shout('Table filters: ' + JSON.stringify(filters));
+
             return filters;
         }
 
@@ -2381,20 +2383,20 @@ var shout = function() {
                     ];
                 }
 
-            }
-
-            rankedEmployees = rankedEmployees.map(employee => {
-                if (employee.industryRating === undefined) {
-                    employee.industryRating = 0;
-                }
-                return employee;
-            });
-
-            if (settings.removeIndustry === true) {
-                // Filter out employees with empty or 0 industry ratings
-                rankedEmployees = rankedEmployees.filter(employee => {
-                    return employee.industryRating !== undefined && employee.industryRating !== 0;
+                rankedEmployees = rankedEmployees.map(employee => {
+                    if (employee.industryRating === undefined) {
+                        employee.industryRating = 0;
+                    }
+                    return employee;
                 });
+    
+                if (settings.removeIndustry === true) {
+                    // Filter out employees with empty or 0 industry ratings
+                    rankedEmployees = rankedEmployees.filter(employee => {
+                        return employee.industryRating !== undefined && employee.industryRating !== 0;
+                    });
+                }
+
             }
 
             const sortedFiltereEmployees = customSortEmployees(rankedEmployees, sortingCriteria);
@@ -2611,6 +2613,8 @@ var shout = function() {
             // Add dimmer and loader
             var dimmer = $('#tableSkillsLoader');
             dimmer.addClass('active');
+
+            shout(`Table data raw >>>\nSkills: ${skills}\nIndustry: ${industryId}\nFilters: ${JSON.stringify(tableFilters)}`);
 
             sleep(2000, function() {
                 var results = [];
@@ -2916,8 +2920,11 @@ var shout = function() {
             scr.company       = nlapiGetFieldText('custrecord_screq_opp_company') || '-N/A-';
             scr.companyid     = nlapiGetFieldValue('custrecord_screq_opp_company') || null;
 
-            scr.city          = nlapiLookupField('customer', scr.companyid, 'billcity', true) || '-N/A-';
-            scr.state         = nlapiLookupField('customer', scr.companyid, 'billstate', true) || '-N/A-';
+            // move away from lookupfield and load directly from customer
+            let cRec          = nlapiLoadRecord('customer', scr.companyid);
+
+            scr.city          = cRec.getFieldValue('billcity') || '-N/A-';
+            scr.state         = cRec.getFieldValue('billstate') || '-N/A-';
             scr.region        = getRegion(scr.state);
 
             scr.opportunity   = nlapiGetFieldText('custrecord_screq_opportunity') || '-N/A-';
@@ -2935,7 +2942,7 @@ var shout = function() {
             return scr;
         }
 
-        function getRequestMetadataHrml() {
+        function getRequestMetadataHtml() {
             var data = getRequestMetadata() || null;
 
             if (!data) { return ''; }
