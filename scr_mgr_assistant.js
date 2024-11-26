@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.4.4
+// @version      3.4.5
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -645,6 +645,17 @@ var shout = function() {
         * +=========================================================================================+
         */
 
+        /**
+         * ######   ######   ######      ######  ######## ##    ## ##       ######## 
+         * ##    ## ##    ## ##    ##    ##    ##    ##     ##  ##  ##       ##       
+         * ##       ##       ##          ##          ##      ####   ##       ##       
+         * ##        ######   ######      ######     ##       ##    ##       ######   
+         * ##             ##       ##          ##    ##       ##    ##       ##       
+         * ##    ## ##    ## ##    ##    ##    ##    ##       ##    ##       ##       
+         *  ######   ######   ######      ######     ##       ##    ######## ########
+         * 
+         */
+
        // Set UI settings
         GM_addStyle(/* syntax: css */ `
             :root {
@@ -1026,6 +1037,18 @@ var shout = function() {
             `
         ;
 
+/**
+         * 
+         * ########  #######   #######  ##       ########     ###    ########  
+         *    ##    ##     ## ##     ## ##       ##     ##   ## ##   ##     ## 
+         *    ##    ##     ## ##     ## ##       ##     ##  ##   ##  ##     ## 
+         *    ##    ##     ## ##     ## ##       ########  ##     ## ########  
+         *    ##    ##     ## ##     ## ##       ##     ## ######### ##   ##   
+         *    ##    ##     ## ##     ## ##       ##     ## ##     ## ##    ##  
+         *    ##     #######   #######  ######## ########  ##     ## ##     ##
+         * 
+         */
+
         var btnMenu = /* syntax: html */ `
             <!-- SC Mgr Assistant -->
             <div class="ui menu" id="sc-mgr-assistant">
@@ -1203,6 +1226,18 @@ var shout = function() {
                 `
             ;
         }
+
+        /**
+         * 
+         * ##     ##  #######  ########     ###    ##          ########  #######  ########  ##     ## 
+         * ###   ### ##     ## ##     ##   ## ##   ##          ##       ##     ## ##     ## ###   ### 
+         * #### #### ##     ## ##     ##  ##   ##  ##          ##       ##     ## ##     ## #### #### 
+         * ## ### ## ##     ## ##     ## ##     ## ##          ######   ##     ## ########  ## ### ## 
+         * ##     ## ##     ## ##     ## ######### ##          ##       ##     ## ##   ##   ##     ## 
+         * ##     ## ##     ## ##     ## ##     ## ##          ##       ##     ## ##    ##  ##     ## 
+         * ##     ##  #######  ########  ##     ## ########    ##        #######  ##     ## ##     ##
+         * 
+         */
 
         var modalContentRequestForm = /* syntax: html */ `
             <!-- Staff My Team Modal and Form -->
@@ -1474,7 +1509,6 @@ var shout = function() {
                             <!-- Opp Details -->
                             ${
                                 getRequestMetadataHtml()
-                                getRequestMetadataHtml()
                             }
 
                             <!-- Request Details -->
@@ -1520,6 +1554,17 @@ var shout = function() {
             `
         ;
 
+        /**
+         * 
+         * ##     ##  #######  ########     ###    ##          ########   #######  ########  ##     ## ########  
+         * ###   ### ##     ## ##     ##   ## ##   ##          ##     ## ##     ## ##     ## ##     ## ##     ## 
+         * #### #### ##     ## ##     ##  ##   ##  ##          ##     ## ##     ## ##     ## ##     ## ##     ## 
+         * ## ### ## ##     ## ##     ## ##     ## ##          ########  ##     ## ########  ##     ## ########  
+         * ##     ## ##     ## ##     ## ######### ##          ##        ##     ## ##        ##     ## ##        
+         * ##     ## ##     ## ##     ## ##     ## ##          ##        ##     ## ##        ##     ## ##        
+         * ##     ##  #######  ########  ##     ## ########    ##         #######  ##         #######  ##
+         * 
+         */
         var modalContentNotesForm = /* syntax: html */ `
             <!-- SC Mgr Notes Modal -->
             <form class="ui small form modal" id="scr-modal-notes-form">
@@ -2927,11 +2972,6 @@ var shout = function() {
 
             scr.city          = cRec.getFieldValue('billcity') || '-N/A-';
             scr.state         = cRec.getFieldValue('billstate') || '-N/A-';
-            // move away from lookupfield and load directly from customer
-            let cRec          = nlapiLoadRecord('customer', scr.companyid);
-
-            scr.city          = cRec.getFieldValue('billcity') || '-N/A-';
-            scr.state         = cRec.getFieldValue('billstate') || '-N/A-';
             scr.region        = getRegion(scr.state);
 
             scr.opportunity   = nlapiGetFieldText('custrecord_screq_opportunity') || '-N/A-';
@@ -2949,7 +2989,6 @@ var shout = function() {
             return scr;
         }
 
-        function getRequestMetadataHtml() {
         function getRequestMetadataHtml() {
             var data = getRequestMetadata() || null;
 
