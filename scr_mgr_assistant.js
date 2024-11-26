@@ -1388,6 +1388,7 @@ var shout = function() {
                                 <!-- MIDDLE Filters and buttons -->
                                 <div class="ui attached segment">
                                     <div class="fields">
+                                    <div class="fields">
                                         <div class="field">
                                             <label>My Team</label>
                                             <select class="ui fluid clearable dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
@@ -1472,6 +1473,7 @@ var shout = function() {
 
                             <!-- Opp Details -->
                             ${
+                                getRequestMetadataHtml()
                                 getRequestMetadataHtml()
                             }
 
@@ -2925,6 +2927,11 @@ var shout = function() {
 
             scr.city          = cRec.getFieldValue('billcity') || '-N/A-';
             scr.state         = cRec.getFieldValue('billstate') || '-N/A-';
+            // move away from lookupfield and load directly from customer
+            let cRec          = nlapiLoadRecord('customer', scr.companyid);
+
+            scr.city          = cRec.getFieldValue('billcity') || '-N/A-';
+            scr.state         = cRec.getFieldValue('billstate') || '-N/A-';
             scr.region        = getRegion(scr.state);
 
             scr.opportunity   = nlapiGetFieldText('custrecord_screq_opportunity') || '-N/A-';
@@ -2942,6 +2949,7 @@ var shout = function() {
             return scr;
         }
 
+        function getRequestMetadataHtml() {
         function getRequestMetadataHtml() {
             var data = getRequestMetadata() || null;
 
