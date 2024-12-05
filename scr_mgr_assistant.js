@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.4.5
+// @version      3.4.7
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1248,7 +1248,7 @@ var shout = function() {
                 <div class="scrolling content">
 
                     <!-- Start Grid -->
-                    <div class="ui stackable two column grid">
+                    <div class="ui two column grid">
 
                         <!-- Column One -->
                         <div class="eleven wide column">
@@ -1306,7 +1306,10 @@ var shout = function() {
                                             <div class="item" data-value="MFG Std/Prm">MFG Std/Prm</div>
                                             <div class="item" data-value="Healthcare Std/Prm">Healthcare Std/Prm</div>
                                             <div class="item" data-value="NFP Std/Prm">NFP Std/Prm</div>
-                                            <div class="item" data-value="SPP/OpenAir Only">SPP/OpenAir Only</div>
+                                            <div class="item" data-value="F&B Std/Prm">F&B Std/Prm</div>
+                                            <div class="item" data-value="H&B Std/Prm">H&B Std/Prm</div>
+                                            <div class="item" data-value="Retail Std/Prm">Retail Std/Prm</div>
+                                            <div class="item" data-value="SuiteProjects Pro">SuiteProjects Pro</div>
                                             <div class="item" data-value="Starter">Starter</div>
                                         </div>
                                     </div>
@@ -1422,7 +1425,6 @@ var shout = function() {
 
                                 <!-- MIDDLE Filters and buttons -->
                                 <div class="ui attached segment">
-                                    <div class="fields">
                                     <div class="fields">
                                         <div class="field">
                                             <label>My Team</label>
