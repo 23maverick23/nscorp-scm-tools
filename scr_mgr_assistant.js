@@ -2,7 +2,7 @@
 // @name         SCR Mgr Assistant Toolbar BETA
 // @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      3.4.7
+// @version      3.4.8
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
 // @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
 // @tag          productivity
@@ -1299,18 +1299,27 @@ var shout = function() {
                                         <i class="dropdown icon"></i>
                                         <div class="default text">Choose a SKU</div>
                                         <div class="menu">
-                                            <div class="item" data-value="Svcs Std/Prm">Svcs Std/Prm</div>
-                                            <div class="item" data-value="FF Std/Prm">FF Std/Prm</div>
-                                            <div class="item" data-value="SW Std/Prm">SW Std/Prm</div>
-                                            <div class="item" data-value="WD Std/Prm">WD Std/Prm</div>
-                                            <div class="item" data-value="MFG Std/Prm">MFG Std/Prm</div>
-                                            <div class="item" data-value="Healthcare Std/Prm">Healthcare Std/Prm</div>
-                                            <div class="item" data-value="NFP Std/Prm">NFP Std/Prm</div>
-                                            <div class="item" data-value="F&B Std/Prm">F&B Std/Prm</div>
-                                            <div class="item" data-value="H&B Std/Prm">H&B Std/Prm</div>
-                                            <div class="item" data-value="Retail Std/Prm">Retail Std/Prm</div>
-                                            <div class="item" data-value="SuiteProjects Pro">SuiteProjects Pro</div>
+                                            <div class="header">General Business</div>
+                                            <div class="item" data-value="Finance">Finance</div>
+                                            <div class="item" data-value="Healthcare">Healthcare</div>
+                                            <div class="item" data-value="Non-Profit">Non-Profit</div>
+                                            <div class="header">Products</div>
+                                            <div class="item" data-value="WD">WD</div>
+                                            <div class="item" data-value="MFG">MFG</div>
+                                            <div class="item" data-value="F&B">F&B</div>
+                                            <div class="item" data-value="H&B">H&B</div>
+                                            <div class="item" data-value="Retail">Retail</div>
+                                            <div class="header">High Tech</div>
+                                            <div class="item" data-value="Project Based">Project Based</div>
+                                            <div class="item" data-value="Services">Services</div>
+                                            <div class="item" data-value="XaaS">XaaS</div>
+                                            <div class="item" data-value="Software">Software</div>
+                                            <div class="item" data-value="Agency">Agency</div>
+                                            <div class="item" data-value="Media">Media</div>
+                                            <div class="item" data-value="Telco">Telco</div>
+                                            <div class="header">Other</div>
                                             <div class="item" data-value="Starter">Starter</div>
+                                            <div class="item" data-value="SuiteProjects Pro">SuiteProjects Pro</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1376,7 +1385,7 @@ var shout = function() {
                                             <div class="item" data-value="25">NS Connector</div>
                                             <div class="item" data-value="27">NSAW</div>
                                             <div class="item" data-value="28">OneWorld</div>
-                                            <div class="item" data-value="29">OpenAir</div>
+                                            <div class="item" data-value="29">SuiteProjects Pro (OpenAir)</div>
                                             <div class="item" data-value="31">Payroll</div>
                                             <div class="item" data-value="33">Quality Management </div>
                                             <div class="item" data-value="34">Rebate Management</div>
@@ -1483,6 +1492,14 @@ var shout = function() {
                                                 <option value="ias">Industry > Availability > Skills</option>
                                                 <option value="ais">Availability > Industry > Skills</option>
                                                 <option value="sia">Skills > Industry > Availability</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>Skills Operator</label>
+                                            <select class="ui fluid dropdown" name="skillfilter-operator" id="skillfilter-operator">
+                                                <option value="any">Has ANY skills</option>
+                                                <option value="all">Has ALL skills</option>
                                             </select>
                                         </div>
 
@@ -1973,10 +1990,12 @@ var shout = function() {
 
             // sorting
             const filterSorting = $('#skillfilter-sorting').dropdown('get value') || 'ias';
+            const filterOperator = $('#skillfilter-operator').dropdown('get value') || 'any';
 
             filters.industry = fIndustry;
             filters.skills = fSkills;
             filters.sorting = filterSorting;
+            filters.operator = filterOperator;
 
             shout('Table filters: ' + JSON.stringify(filters));
 
@@ -2208,13 +2227,13 @@ var shout = function() {
             return skills;
         }
 
-        function consolidateSkillsData(data, sortKey) {
+        function consolidateSkillsData(data, sortKey, sortOperator) {
             // now passing array of 2 results...
             const skillsData = data[0];
             const industryData = data[1];
             if (!skillsData || skillsData.length === 0) { return null; }
 
-            const aggregatedScores = skillsData.reduce((acc, [
+            let aggregatedScores = skillsData.reduce((acc, [
                 employeeId,
                 employee,
                 manager,
@@ -2255,6 +2274,10 @@ var shout = function() {
 
                 return acc;
             }, {});
+
+            if (sortOperator === 'all') {
+                // remove employees who have a 0 in any skill here...
+            }
 
             // Clean up the trailing comma and space from the skills string
             Object.keys(aggregatedScores).forEach(employee => {
@@ -2671,7 +2694,7 @@ var shout = function() {
                 const resultB = (industryId) ? getBodyOfWorkIndustryData(industryId, tableFilters.industry) : [];
                 results.push(resultA, resultB);
 
-                const skillsClean = consolidateSkillsData(results, tableFilters.sorting);
+                const skillsClean = consolidateSkillsData(results, tableFilters.sorting, tableFilters.operator);
                 var   html        = generateBodtOfWorkHtml(skillsClean, industryId);
                 var   rowTotals   = skillsClean.length || 0;
                 
