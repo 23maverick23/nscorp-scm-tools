@@ -1,10 +1,15 @@
 // ==UserScript==
-// @name         SCR Mgr Assistant Toolbar
-// @namespace    https://ryancmorrissey.com/
+// @name         SCR Mgr Assistant Toolbar BETA
+// @namespace    scrmgrassistant
 // @copyright    Copyright © 2024 by Ryan Morrissey
-// @version      2.1.8
+// @version      3.4.8
 // @description  Adds an Assistant Toolbar with interactive buttons to all SC Request forms.
+// @icon         https://cdn0.iconfinder.com/data/icons/phosphor-bold-vol-3-1/256/lifebuoy-duotone-512.png
+// @tag          productivity
+// @tag          work
 // @author       Ryan Morrissey (https://github.com/23maverick23)
+// @match        https://nlcorp-sb2.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
+// @match        https://nlcorp-sb2.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&custparam_record_id=*
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&e=T*
 // @match        https://nlcorp.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=2840*&custparam_record_id=*
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
@@ -13,6 +18,7 @@
 // @require      https://cdn.jsdelivr.net/gh/CoeJoder/waitForKeyElements.js@v1.3/waitForKeyElements.js
 // @require      https://openuserjs.org/src/libs/sizzle/GM_config.js
 // @require      https://userscripts-mirror.org/scripts/source/107941.user.js
+// @require      https://fomantic-ui.com/javascript/library/tablesort.js
 // @resource     FOMANTIC_CSS https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css
 // @grant        GM_getResourceText
 // @grant        GM_addStyle
@@ -22,33 +28,67 @@
 // @grant        GM.setValue
 // @grant        GM_registerMenuCommand
 // @run-at       document-idle
-// @downloadURL  https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
-// @updateURL    https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
+// @downloadURL  https://github.com/23maverick23/nscorp-scm-tools/raw/beta-3.0.0/scr_mgr_assistant.js
+// @updateURL    https://github.com/23maverick23/nscorp-scm-tools/raw/beta-3.0.0/scr_mgr_assistant.js
 // @supportURL   https://github.com/23maverick23/nscorp-scm-tools/issues
 // ==/UserScript==
 
 /* globals $, jQuery */
 /* globals GM_config, GM_SuperValue, waitForKeyElements */
 /* globals nlapiSearchRecord, nlapiGetFieldValue, nlapiSetFieldValue, nlapiGetFieldValues, nlapiSetFieldValues, nlapiGetUser, nlobjSearchFilter, nlobjSearchColumn, nlapiStringToDate */
+
+/**
+* +========================================================================+
+* |                                                                        |
+* |    ######   ##        #######  ########     ###    ##        ######    |
+* |   ##    ##  ##       ##     ## ##     ##   ## ##   ##       ##    ##   |
+* |   ##        ##       ##     ## ##     ##  ##   ##  ##       ##         |
+* |   ##   #### ##       ##     ## ########  ##     ## ##        ######    |
+* |   ##    ##  ##       ##     ## ##     ## ######### ##             ##   |
+* |   ##    ##  ##       ##     ## ##     ## ##     ## ##       ##    ##   |
+* |    ######   ########  #######  ########  ##     ## ########  ######    |
+* |                                                                        |
+* +========================================================================+
+*/
+
+const CACHE_DURATION_MS = 21600000; // duration in milliseconds, currently 6 hours
+const SCRIPT_PREFIX     = 'BETA_';  // remove this later
+const SCRIPT_ID         = `${SCRIPT_PREFIX}assistant_config`;
+const SCRIPT_CACHE_ID   = `${SCRIPT_PREFIX}people_cache`;
+const SCRIPT_VERSION    = GM_info.script.version;
+const CONFIG_TITLE      = `${GM_info.script.name} (v${SCRIPT_VERSION})`;
+
+/**
+ * Simple wrapper for console logging
+ * @return {object} console.log instance
+ */
+var shout = function() {
+    var context = `${GM_info.script.name} >> `;
+    return Function.prototype.bind.call(console.log, console, context);
+}();
+
+// Script code
 (function() {
     'use strict';
 
+    var $ = jQuery.noConflict(true);
+
     /**
-    * >>=========================================================================<<
-    * ||######  #######    #     # ####### #######    ####### ######  ### #######||
-    * ||#     # #     #    ##    # #     #    #       #       #     #  #     #   ||
-    * ||#     # #     #    # #   # #     #    #       #       #     #  #     #   ||
-    * ||#     # #     #    #  #  # #     #    #       #####   #     #  #     #   ||
-    * ||#     # #     #    #   # # #     #    #       #       #     #  #     #   ||
-    * ||#     # #     #    #    ## #     #    #       #       #     #  #     #   ||
-    * ||######  #######    #     # #######    #       ####### ######  ###    #   ||
-    * >>=========================================================================<<
+    * +==================================================================================+
+    * |                                                                                  |
+    * |    ######   ##     ##       ######   #######  ##    ## ######## ####  ######     |
+    * |   ##    ##  ###   ###      ##    ## ##     ## ###   ## ##        ##  ##    ##    |
+    * |   ##        #### ####      ##       ##     ## ####  ## ##        ##  ##          |
+    * |   ##   #### ## ### ##      ##       ##     ## ## ## ## ######    ##  ##   ####   |
+    * |   ##    ##  ##     ##      ##       ##     ## ##  #### ##        ##  ##    ##    |
+    * |   ##    ##  ##     ##      ##    ## ##     ## ##   ### ##        ##  ##    ##    |
+    * |    ######   ##     ##       ######   #######  ##    ## ##       ####  ######     |
+    * |                                                                                  |
+    * +==================================================================================+
     */
 
-    var $ = jQuery.noConflict(true);
-    // window.onbeforeunload = () => {};
-
-    let configFieldDefs = {
+    // Init the GM settings page
+    const configFieldDefs = {
         'theme': {
             'label': 'Theme',
             'type': 'select',
@@ -59,49 +99,49 @@
         'showGB': {
             'label': 'Show General Business cross-vertical button',
             'type': 'checkbox',
-            'default': 'true',
+            'default': true,
             'section': ['Buttons', 'Enable/disable specific buttons in the assistant bar.']
         },
         'showPR': {
             'label': 'Show Products cross-vertical button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showHT': {
             'label': 'Show High Tech / Tiger cross-vertical button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showEPM': {
             'label': 'Show EPM cross-vertical button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showCancel': {
             'label': 'Show Cancel button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'showHold': {
             'label': 'Show On Hold button',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'filterMe': {
             'label': 'Filter "Assigned To" using: SC Manager = Me',
             'type': 'checkbox',
-            'default': 'true',
+            'default': true,
             'section': ['Filters', 'Set filters for the Assign To field (filters are additive).']
         },
         'filterVertical': {
             'label': 'Filter "Assigned To" using: SC Vertical = My Vertical',
             'type': 'checkbox',
-            'default': 'true'
+            'default': true
         },
         'filterTier': {
             'label': 'Filter "Assigned To" using: SC Tier = My Tier',
             'type': 'checkbox',
-            'default': 'false'
+            'default': false
         },
         'filterDirector': {
             'label': 'Filter "Assigned To" using: SC Director = <name|none>',
@@ -125,19 +165,41 @@
         'showDebug': {
             'label': 'Show Debug button in assistant bar',
             'type': 'checkbox',
-            'default': 'false',
+            'default': false,
             'section': ['Experimental Settings', 'Only change these if you know what you\'re doing.']
         },
-        'overrideForm': {
-            'label': 'Force "Solution Consultant - Direct" form on load',
+        'includeBodyOfWork': {
+            'label': 'Include SC Body of Work lookup',
             'type': 'checkbox',
-            'default': 'false'
-        },
-        'forceRefreshCache': {
-            'label': 'Force cache refresh',
-            'type': 'checkbox',
-            'save': false,
             'default': false
+        },
+        'includeAvailability': {
+            'label': 'Include SC engagement workload data in dropdown',
+            'type': 'checkbox',
+            'default': false
+        },
+        'removeIndustry': {
+            'label': 'Remove SCs with 0 or empty industry ratings',
+            'type': 'checkbox',
+            'default': false
+        },
+        'sortAvailabilityBy': {
+            'label': 'Sort "Assigned To" dropdown by: ',
+            'type': 'select',
+            'options': ['SC Name', '30 day load', 'In Play'],
+            'default': 'SC Name'
+        },
+        'sortAvailabilityDirection': {
+            'label': '"Assigned To" dropdown sort direction: ',
+            'type': 'select',
+            'options': ['Asc', 'Desc'],
+            'default': 'Asc'
+        },
+        'cacheRefreshDelay': {
+            'label': 'Refresh SC availability (and workload) data every N hour(s)',
+            'type': 'select',
+            'options': ['1', '2', '3', '4', '6'],
+            'default': '6'
         },
         'cacheDateTime': {
             'label': 'Date/time of last cache refresh',
@@ -146,58 +208,46 @@
             'title': 'This is for information purposes only.',
             'default': '',
             'save': false
+        },
+        'forceRefreshCache': {
+            'label': 'Force cache refresh',
+            'type': 'checkbox',
+            'save': false,
+            'default': false
         }
     };
 
-    const CACHE_DURATION_MS = 21600000; // duration in milliseconds, currently 6 hours
-    const SCRIPT_VERSION = GM_info.script.version;
+    let modalSettingForm = document.createElement('form');
+    modalSettingForm.setAttribute('id', 'scr-modal-settings-form');
+    modalSettingForm.setAttribute('class', 'ui overlay fullscreen form modal');
+    document.body.appendChild(modalSettingForm);
 
-    function checkVersion() {
+    let frame = document.createElement('div');
+    frame.setAttribute('class', 'scrolling content');
+    document.getElementById('scr-modal-settings-form').appendChild(frame);
 
-    }
-    var shout = function() {
-        var context = "SC Mgr Assistant >> ";
-        return Function.prototype.bind.call(console.log, console, context);
-    }();
-
-    const modalSettingForm = /* syntax: html */ `
-        <form class="ui small form modal" id="scr-modal-settings-form"></form>
-        `
-    ;
-
-    $('body').append(modalSettingForm);
-    const frame = document.createElement('div');
-    frame.className = "content";
-    document.getElementById("scr-modal-settings-form").appendChild(frame);
-
-    const configCss = /* syntax: css */ ``
-    ;
-
-    var configTitle = `SCR Mgr Assistant (v${SCRIPT_VERSION})`;
+    GM_registerMenuCommand(`${GM_info.script.name} Settings`, () => {
+        openConfig();
+    });
 
     let gmc = new GM_config(
         {
-            'id': 'assistant_config',
-            'title': configTitle,
+            'id': `${SCRIPT_ID}`,
+            'title': `${GM_info.script.name} ${GM_info.script.version}`,
             'fields': configFieldDefs,
-            'css': configCss,
             'frame': frame,
             'events': {
+                'init': init,
                 'save': function(values) {
                     if (values.forceRefreshCache) {
-                        GM_SuperValue.set('people_cache', '');
-                        GM_SuperValue.set('people_cache_ts', '');
+                        GM_SuperValue.set(`${SCRIPT_CACHE_ID}`, null);
+                        GM_SuperValue.set(`${SCRIPT_CACHE_ID}_ts`, null);
                     }
 
-                    if (confirm('SC Mgr Assistant: The page will now refresh for changes to take effect.')) { location.reload(); }
-
-                    let config = this;
-                    this.close();
+                    if (confirm(`${GM_info.script.name} >> The page will now refresh for changes to take effect.`)) { location.reload(); }
+                    GM_config.close();
                 },
-                'close': function() {
-                    closeSettingsModal();
-                },
-                'init': onInit
+                'close': onClose
             }
         }
     );
@@ -206,49 +256,57 @@
         // opens staffing modal form
         $('#scr-modal-settings-form')
             .modal({
-                inverted: true
+                inverted: true,
+                closable: false
             })
             .modal('setting', 'transition', 'scale')
             .modal('show')
         ;
 
-        $('#assistant_config').attr('style', ''); // remove default form styling
+        /**
+         * These are just "quality of life" improvements to remove and restyle the settings panel
+         * from the gm_config script. There isn't a nicer way to remove and reset all the classnames
+         * to follow fomantic naming, so we will live with this mess for now...
+         */
 
-        $('#assistant_config_header').attr('class', 'ui center aligned large header'); // remove default header styling
-
-        $('#assistant_config .section_header.center').attr('class', 'ui header'); // remove default section header styling
-
-        $('#assistant_config .section_desc.center').attr('class', 'grey sub header'); // remove default section subheader styling
-
-        $('[id^=assistant_config_section_desc]').each(function() {
+        $(`#${SCRIPT_ID}`).attr('style', ''); // remove default form styling
+        $(`#${SCRIPT_ID}_header`).attr('class', 'ui center aligned large header'); // remove default header styling
+        $(`#${SCRIPT_ID} .section_header.center`).attr('class', 'ui header'); // remove default section header styling
+        $(`#${SCRIPT_ID} .section_desc.center`).attr('class', 'grey sub header'); // remove default section subheader styling
+        $(`[id^=${SCRIPT_ID}_section_desc]`).each(function() {
             $(this).siblings("[id^=assistant_config_section_header]").append(this);
         });
-
-        $('#assistant_config .section_header_holder').attr('class', 'ui segment'); // remove default section styling
-
-        $('#assistant_config label').attr('class', ''); // remove default label styling
-
-        $('#assistant_config select')
+        $(`#${SCRIPT_ID} .section_header_holder`).attr('class', 'ui segment'); // remove default section styling
+        $(`#${SCRIPT_ID} label`).attr('class', ''); // remove default label styling
+        $(`#${SCRIPT_ID} select`)
             .attr('class', 'ui fluid selection dropdown') // remove default class for select
             .parent().closest('div')
             .attr('class', 'inline field') // remove default class for select
         ;
-
-        $('#assistant_config select').dropdown({clearable: true}); // convert select to fancy
-
-        $('#assistant_config input:checkbox')
+        $(`#${SCRIPT_ID} select`).dropdown({clearable: true}); // convert select to fancy
+        $(`#${SCRIPT_ID} input:checkbox`)
             .attr('class', 'hidden') // remove default class for checkbox
             .parent().closest('div')
             .attr('class', 'ui toggle checkbox') // remove default class for checkbox
             .wrap('<div class="inline field"></div>')
         ;
-        $('#assistant_config input:checkbox').parent().closest('div').checkbox(); // convert checkbox to fancy
-
-        $('#assistant_config_saveBtn').attr('class', 'ui green button'); // remove default class for buttons
-        $('#assistant_config_closeBtn').attr('class', 'ui black button').html('Dismiss'); // remove default class for buttons
-
-        $('#assistant_config_cacheDateTime_var').attr('class', 'disabled field'); // make field disabled
-        $('#assistant_config_field_cacheDateTime').attr('readonly', ''); // make cache date/time field read-only
+        $(`#${SCRIPT_ID} input:radio`)
+            .attr('class', 'hidden')
+        ;
+        $(`#${SCRIPT_ID} input:radio+label`).each(function() {
+            $(this).prev().addBack().wrapAll('<div class="ui radio checkbox" />');
+        });
+        $(`.ui.radio.checkbox`)
+            .parent().closest('div')
+            .attr('class', 'field')
+            .parent().closest('div')
+            .attr('class', 'inline fields')
+        ;
+        $(`#${SCRIPT_ID} input:checkbox`).parent().closest('div').checkbox(); // convert checkbox to fancy
+        $(`#${SCRIPT_ID}_saveBtn`).attr('class', 'ui green button'); // remove default class for buttons
+        $(`#${SCRIPT_ID}_closeBtn`).attr('class', 'ui black button').html('Dismiss'); // remove default class for buttons
+        $(`#${SCRIPT_ID}_cacheDateTime_var`).attr('class', 'disabled field'); // make field disabled
+        $(`#${SCRIPT_ID}_field_cacheDateTime`).attr('readonly', ''); // make cache date/time field read-only
 
     }
 
@@ -261,33 +319,103 @@
         openSettingsModal();
     }
 
-    function closeConfig() {
-        gmc.close();
+    function onClose() {
+        // gmc.close();
         closeSettingsModal();
     }
 
-    GM_registerMenuCommand('SCR Mgr Assistant Settings', openConfig);
+    // Helper for whenPageReady function
+    const PAGE_READY = {
+        timeout: true,
+        startTimer: null,
+    };
 
-    function onInit() {
-        // one-time fix for config storage key...
-        var versionCheck = SCRIPT_VERSION.localeCompare("2.1.6", undefined, { numeric: true, sensitivity: 'base' });
-        // 1 = ahead, 0 = same, -1 = behind
-        if (versionCheck < 0) {
-            var tmpConfig = GM_SuperValue.get('scrMgrAssistantConfig');
-            GM_SuperValue.set('assistant_config', tmpConfig);
-            GM_deleteValue('scrMgrAssistantConfig');
-        }
+    // Executes the callback after the page finishes loading
+    // Using a MutationObserver, a timout is set every time a new mutation happens,
+    // if either the elapsed time bewteen mutations is greater than intervalTime or
+    // the full elapsed time is greater than maxWaitTime the callback is executed
+    function whenPageReady(callback, intervalTime, maxWaitTime = 3000) {
+        PAGE_READY.startTimer = Date.now();
+        shout('Waiting for page to load');
 
-        var cacheTime = GM_SuperValue.get('people_cache_ts');
+        const observerCallback = (mutationList, observer) => {
+            if (PAGE_READY.timeout) {
+                clearTimeout(PAGE_READY.timeout);
+                if ((Date.now() - PAGE_READY.startTimer) > maxWaitTime) {
+                    shout('Max wait time exceded, loading script anyway!');
+                    clearTimeout(PAGE_READY.timeout);
+                    PAGE_READY.timeout = null;
+                    observer.disconnect();
+                    callback();
+                } else {
+                    PAGE_READY.timeout = setTimeout(() => {
+                        shout(`Page ready in ${Date.now() - PAGE_READY.startTimer}ms!`);
+                        clearTimeout(PAGE_READY.timeout);
+                        PAGE_READY.timeout = null;
+                        observer.disconnect();
+                        callback();
+                    }, intervalTime);
+                }
+            } else {
+                observer.disconnect();
+            }
+        };
+        const observer = new MutationObserver(observerCallback);
+        observer.observe(document.documentElement, {attributes: true, childList: true, subtree: true});
+    }
+
+    /**
+    * +=================================+
+    * |                                 |
+    * |   #### ##    ## #### ########   |
+    * |    ##  ###   ##  ##     ##      |
+    * |    ##  ####  ##  ##     ##      |
+    * |    ##  ## ## ##  ##     ##      |
+    * |    ##  ##  ####  ##     ##      |
+    * |    ##  ##   ###  ##     ##      |
+    * |   #### ##    ## ####    ##      |
+    * |                                 |
+    * +=================================+
+    */
+
+    function init() {
+
+        whenPageReady(() => {
+
+            buildToolbarAndForms();
+
+        }, 250);
+
+    }
+
+    /**
+    * +=======================================+
+    * |                                       |
+    * |   ##     ##    ###    #### ##    ##   |
+    * |   ###   ###   ## ##    ##  ###   ##   |
+    * |   #### ####  ##   ##   ##  ####  ##   |
+    * |   ## ### ## ##     ##  ##  ## ## ##   |
+    * |   ##     ## #########  ##  ##  ####   |
+    * |   ##     ## ##     ##  ##  ##   ###   |
+    * |   ##     ## ##     ## #### ##    ##   |
+    * |                                       |
+    * +=======================================+
+    */
+
+    function buildToolbarAndForms() {
+
+        var cacheTime = GM_SuperValue.get(`${SCRIPT_CACHE_ID}_ts`, null);
+
         if (cacheTime) {
             var cacheDate = new Date(cacheTime);
             gmc.set('cacheDateTime', cacheDate);
             shout('Cache date/time = ' + cacheDate.toString());
         }
 
-        waitForKeyElements("#scr-modal-request-form", (element) => {
-            doReloadForm();
-        });
+        // DEBUGGING
+        // waitForKeyElements("#scr-modal-request-form", (element) => {
+        //     doReloadForm();
+        // });
 
         var fomantic_css = GM_getResourceText("FOMANTIC_CSS");
         // GM_addStyle(fomantic_css);
@@ -301,14 +429,16 @@
         GM_addStyle(/* syntax: css */ `#sc-mgr-assistant {margin-bottom: 20px;}`);
 
         class Person {
-            constructor(id, first, last, location, status, notes, restricted) {
-                this._id = id;
-                this._first = first;
-                this._last = last;
-                this._location = location;
-                this._status = status;
-                this._notes = notes;
+            constructor(id, first, last, location, status, notes, restricted, weight, inplay) {
+                this._id         = id;
+                this._first      = first;
+                this._last       = last;
+                this._location   = location;
+                this._status     = status;
+                this._notes      = notes;
                 this._restricted = restricted;
+                this._weight     = weight || 0;
+                this._inplay     = inplay || 0;
             }
 
             get id() {
@@ -367,6 +497,22 @@
                 this._restricted = value;
             }
 
+            get weight() {
+                return this._weight;
+            }
+
+            set weight(value) {
+                this._weight = value;
+            }
+
+            get inplay() {
+                return this._inplay;
+            }
+
+            set inplay(value) {
+                this._inplay = value;
+            }
+
             _fullname() {
                 return `${this.first} ${this.last}`;
             }
@@ -422,66 +568,296 @@
             }
 
             get description() {
-                const res = (this.restricted && this.restricted.length > 0) ? `<br>&emsp;<span style="font-style:italic;color:#db2828 !important;">${this.restricted}</span>` : '';
-                return `${this.statusColor} ${this.notes} ${res}`;
+                let template = `
+                    <div class="list">
+                        <div class="item">
+                            ${
+                                (settings.includeAvailability) ?
+                                `<div class="right floated content">
+                                    <div class="header" style="font-weight:bold;text-align:right;">${this.weight}</div>
+                                    <div class="description" style="text-align:right;">${this.inplay} in play</div>
+                                </div>` : ''
+                            }
+                            <div class="content">
+                                <div class="header" style="font-weight:bold;">${this.statusColor} ${this.notes}</div>
+                                <div class="description" style="font-style:italic;color:#db2828 !important;">${this.restricted}</div>
+                            </div>
+                        </div>
+                    </div>
+                    `
+                ;
+                return template;
             }
         }
 
         /**
-         * INITIALIZE SETTINGS
-         */
+        * +==========================================================================+
+        * |                                                                          |
+        * |    ######  ######## ######## ######## #### ##    ##  ######    ######    |
+        * |   ##    ## ##          ##       ##     ##  ###   ## ##    ##  ##    ##   |
+        * |   ##       ##          ##       ##     ##  ####  ## ##        ##         |
+        * |    ######  ######      ##       ##     ##  ## ## ## ##   ####  ######    |
+        * |         ## ##          ##       ##     ##  ##  #### ##    ##        ##   |
+        * |   ##    ## ##          ##       ##     ##  ##   ### ##    ##  ##    ##   |
+        * |    ######  ########    ##       ##    #### ##    ##  ######    ######    |
+        * |                                                                          |
+        * +==========================================================================+
+        */
 
         const settings = {
-            theme             : gmc.get('theme'),
-            showGB            : gmc.get('showGB'),
-            showPR            : gmc.get('showPR'),
-            showHT            : gmc.get('showHT'),
-            showEPM           : gmc.get('showEPM'),
-            showCancel        : gmc.get('showCancel'),
-            showHold          : gmc.get('showHold'),
-            filterMe          : gmc.get('filterMe'),
-            filterVertical    : gmc.get('filterVertical'),
-            filterTier        : gmc.get('filterTier'),
-            filterDirector    : gmc.get('filterDirector'),
-            initials          : gmc.get('initials'),
-            overrideForm      : gmc.get('overrideForm'),
-            showDebug         : gmc.get('showDebug'),
-            forceRefreshCache : gmc.get('forceRefreshCache'),
-            cacheDateTime     : gmc.get('cacheDateTime'),
-            hashtags          : gmc.get('hashtags')
+            theme                     : gmc.get('theme'),
+            showGB                    : gmc.get('showGB'),
+            showPR                    : gmc.get('showPR'),
+            showHT                    : gmc.get('showHT'),
+            showEPM                   : gmc.get('showEPM'),
+            showCancel                : gmc.get('showCancel'),
+            showHold                  : gmc.get('showHold'),
+            filterMe                  : gmc.get('filterMe'),
+            filterVertical            : gmc.get('filterVertical'),
+            filterTier                : gmc.get('filterTier'),
+            filterDirector            : gmc.get('filterDirector'),
+            initials                  : gmc.get('initials'),
+            showDebug                 : gmc.get('showDebug'),
+            includeAvailability       : gmc.get('includeAvailability'),
+            removeIndustry            : gmc.get('removeIndustry'),
+            sortAvailabilityBy        : gmc.get('sortAvailabilityBy'),
+            sortAvailabilityDirection : gmc.get('sortAvailabilityDirection'),
+            includeBodyOfWork         : gmc.get('includeBodyOfWork'),
+            cacheRefreshDelay         : gmc.get('cacheRefreshDelay'),
+            forceRefreshCache         : gmc.get('forceRefreshCache'),
+            cacheDateTime             : gmc.get('cacheDateTime'),
+            hashtags                  : gmc.get('hashtags')
         };
 
         shout(settings);
 
-        // Set UI settings
+        /**
+        * +=========================================================================================+
+        * |                                                                                         |
+        * |   ######## ######## ##     ## ########  ##          ###    ######## ########  ######    |
+        * |      ##    ##       ###   ### ##     ## ##         ## ##      ##    ##       ##    ##   |
+        * |      ##    ##       #### #### ##     ## ##        ##   ##     ##    ##       ##         |
+        * |      ##    ######   ## ### ## ########  ##       ##     ##    ##    ######    ######    |
+        * |      ##    ##       ##     ## ##        ##       #########    ##    ##             ##   |
+        * |      ##    ##       ##     ## ##        ##       ##     ##    ##    ##       ##    ##   |
+        * |      ##    ######## ##     ## ##        ######## ##     ##    ##    ########  ######    |
+        * |                                                                                         |
+        * +=========================================================================================+
+        */
+
+        /**
+         * ######   ######   ######      ######  ######## ##    ## ##       ######## 
+         * ##    ## ##    ## ##    ##    ##    ##    ##     ##  ##  ##       ##       
+         * ##       ##       ##          ##          ##      ####   ##       ##       
+         * ##        ######   ######      ######     ##       ##    ##       ######   
+         * ##             ##       ##          ##    ##       ##    ##       ##       
+         * ##    ## ##    ## ##    ##    ##    ##    ##       ##    ##       ##       
+         *  ######   ######   ######      ######     ##       ##    ######## ########
+         * 
+         */
+
+       // Set UI settings
         GM_addStyle(/* syntax: css */ `
             :root {
-                --menu-color-red    : #db282830;
-                --menu-color-orange : #f5a97f45;
-                --menu-color-yellow : #eed49f70;
-                --menu-color-green  : #21ba4530;
-                --menu-color-blue   : #54c8ff30;
-                --menu-color-purple : #673ab730;
-                --menu-color-pink   : #f5bde670;
+                --menu-color-red    : #C6463330; /* #db282830; */
+                --menu-color-orange : #AD562B30; /* #f5a97f45; */
+                --menu-color-yellow : #E2BF6B30; /* #eed49f70; */
+                --menu-color-green  : #85B49730; /* #21ba4530; */
+                --menu-color-blue   : #558DA230; /* #54c8ff30; */
+                --menu-color-purple : #60698830; /* #673ab730; */
+                --menu-color-pink   : #FB867530; /* #f5bde670; */
+
+                --btn-color-red    : hsl(8, 59%, 49%); /* #C74634; */
+                --btn-color-orange : hsl(20, 60%, 42%); /* #D39E5C; */
+                --btn-color-yellow : hsl(42, 67%, 65%); /* #E2C06B; */
+                --btn-color-green  : hsl(143, 24%, 61%); /* #86B596; */
+                --btn-color-teal   : var(--btn-color-purple); /* hsl(176, 33%, 38%); */
+                --btn-color-blue   : hsl(196, 31%, 48%); /* #81B2C3; */
+                --btn-color-purple : hsl(227, 17%, 45%); /* #606988; */
+                --btn-color-pink   : hsl(8, 94%, 72%); /* #FB8675; */
+                --btn-color-black  : hsl(199, 40%, 35%); /* #36677D; */
+
+                --btn-hover-color-red    : hsl(8, 59%, 30%);
+                --btn-hover-color-orange : hsl(20, 60%, 30%);
+                --btn-hover-color-yellow : hsl(42, 67%, 50%);
+                --btn-hover-color-green  : hsl(143, 24%, 45%);
+                --btn-hover-color-teal   : var(--btn-hover-color-purple) ; /* hsl(176, 33%, 20%); */
+                --btn-hover-color-blue   : hsl(196, 31%, 30%);
+                --btn-hover-color-purple : hsl(227, 17%, 35%);
+                --btn-hover-color-pink   : hsl(8, 94%, 60%);
+                --btn-hover-color-black  : hsl(199, 40%, 25%);
             }
+
+            /* MAIN MENU */
             .ui.menu {
                 box-shadow:0 1px 2px 0 rgba(34, 36, 38, 0.15) !important;
                 background-color: var(--menu-color-${settings.theme}) !important;
+                border-radius: 0 !important;
+            }
+
+            /* CHECKBOX TOGGLE */
+            .ui.toggle.checkbox input:checked ~ label::before {
+                background-color: var(--btn-color-blue) !important;
+            }
+
+            /* LINKS */
+            .ui a {
+                color: var(--nsn-uif-redwood-color-light-text-link) !important;
+                fill: var(--nsn-uif-redwood-color-light-text-link) !important;
+            }
+            .ui a:hover {
+                text-decoration: underline !important;
+                color: var(--nsn-uif-redwood-color-light-text-link) !important;
+                fill: var(--nsn-uif-redwood-color-light-text-link) !important;
+            }
+
+            /* PROGRESS BAR */
+            .ui.indicating.progress[data-percent^="1"] .bar,
+            .ui.indicating.progress[data-percent^="2"] .bar {
+              background-color: #C74734 !important;
+            }
+            .ui.indicating.progress[data-percent^="3"] .bar {
+              background-color: #AD562B !important;
+            }
+            .ui.indicating.progress[data-percent^="4"] .bar,
+            .ui.indicating.progress[data-percent^="5"] .bar {
+              background-color: #D39E5C !important;
+            }
+            .ui.indicating.progress[data-percent^="6"] .bar {
+              background-color: #E2BF6B !important;
+            }
+            .ui.indicating.progress[data-percent^="7"] .bar,
+            .ui.indicating.progress[data-percent^="8"] .bar {
+              background-color: #86B598 !important;
+            }
+            .ui.indicating.progress[data-percent^="9"] .bar,
+            .ui.indicating.progress[data-percent^="100"] .bar {
+              background-color: #769C6E !important;
+            }
+
+            .ui.table td[class*="red marked"].left,
+            .ui.table tr[class*="red marked"].left {
+              box-shadow: 0.4em 0 0 0 #C74734 inset !important;
+            }
+            .ui.table td[class*="yellow marked"].left,
+            .ui.table tr[class*="yellow marked"].left {
+              box-shadow: 0.4em 0 0 0 #D39E5C inset !important;
+            }
+            .ui.table td[class*="green marked"].left,
+            .ui.table tr[class*="green marked"].left {
+              box-shadow: 0.4em 0 0 0 #86B598 inset !important;
+            }
+
+            /* STAR RATING */
+            .ui.yellow.rating .active.icon {
+              color: #E2BF6B !important;
+              text-shadow: 0 -1px 0 #D39E5C, -1px 0 0 #D39E5C, 0 1px 0 #D39E5C, 1px 0 0 #D39E5C !important;
+            }
+
+            /* CUSTOM BUTTONS */
+            .ui.red.button {
+                background-color: var(--btn-color-red) !important;
+                color: #fff !important;
+            }
+            .ui.red.button:hover {
+                background-color: var(--btn-hover-color-red) !important;
+            }
+            .ui.orange.button {
+                background-color: var(--btn-color-orange) !important;
+                color: #fff !important;
+            }
+            .ui.orange.button:hover {
+                background-color: var(--btn-hover-color-orange) !important;
+            }
+            .ui.yellow.button {
+                background-color: var(--btn-color-yellow) !important;
+                color: #fff !important;
+            }
+            .ui.yellow.button:hover {
+                background-color: var(--btn-hover-color-yellow) !important;
+            }
+            .ui.green.button {
+                background-color: var(--btn-color-green) !important;
+                color: #fff !important;
+            }
+            .ui.green.button:hover {
+                background-color: var(--btn-hover-color-green) !important;
+            }
+            .ui.teal.button {
+                background-color: var(--btn-color-teal) !important;
+                color: #fff !important;
+            }
+            .ui.teal.button:hover {
+                background-color: var(--btn-hover-color-teal) !important;
+            }
+            .ui.blue.button,
+            .ui.primary.button {
+                background-color: var(--btn-color-blue) !important;
+                color: #fff !important;
+            }
+            .ui.blue.button:hover,
+            .ui.primary.button:hover {
+                background-color: var(--btn-hover-color-blue) !important;
+            }
+            .ui.purple.button {
+                background-color: var(--btn-color-purple) !important;
+                color: #fff !important;
+            }
+            .ui.purple.button:hover {
+                background-color: var(--btn-hover-color-purple) !important;
+            }
+            .ui.pink.button {
+                background-color: var(--btn-color-pink) !important;
+                color: #fff !important;
+            }
+            .ui.pink.button:hover {
+                background-color: var(--btn-hover-color-pink) !important;
+            }
+            .ui.black.button {
+                background-color: var(--btn-color-black) !important;
+                color: #fff !important;
+            }
+            .ui.black.button:hover {
+                background-color: var(--btn-hover-color-black) !important;
+            }
+
+            /* LOADER */
+            .ui.ui.blue.elastic.loader::before,
+            .ui.blue.basic.elastic.loading.button::before,
+            .ui.blue.basic.elastic.loading.button::after,
+            .ui.ui.ui.blue.elastic.loading:not(.segment):not(.segments):not(.card)::before,
+            .ui.ui.ui.blue.elastic.loading .input > i.icon::before,
+            .ui.ui.ui.ui.blue.elastic.loading > i.icon::before,
+            .ui.ui.ui.ui.blue.loading:not(.usual):not(.button)::after,
+            .ui.ui.ui.ui.blue.loading .input > i.icon::after,
+            .ui.ui.ui.ui.blue.loading > i.icon::after,
+            .ui.ui.ui.blue.loader::after {
+              color: #558CA1 !important;
+            }
+
+            /* LEGEND ICONS */
+            .orange.icon {
+                color: var(--btn-color-orange) !important;
+            }
+            .blue.icon {
+                color: var(--btn-color-blue) !important;
+            }
+            .green.icon {
+                color: var(--btn-color-green) !important;
+            }
+            .teal.icon {
+                color: var(--btn-color-teal) !important;
+            }
+            .yellow.icon {
+                color: var(--btn-color-yellow) !important;
+            }
+            .red.icon {
+                color: var(--btn-color-red) !important;
+            }
+            .black.icon {
+                color: var(--btn-color-black) !important;
             }
         `);
-
-        // HELPER FUNCTION
-
-        function doReloadForm() {
-            if (settings.overrideForm) {
-                shout('Overriding current form to Direct...');
-                setRequestType();
-            }
-        }
-
-        /**
-         * HTML TEMPLATES
-         */
 
         var btnMenuProducts = /* syntax: html */ `
             <div class="item">
@@ -661,11 +1037,26 @@
             `
         ;
 
+/**
+         * 
+         * ########  #######   #######  ##       ########     ###    ########  
+         *    ##    ##     ## ##     ## ##       ##     ##   ## ##   ##     ## 
+         *    ##    ##     ## ##     ## ##       ##     ##  ##   ##  ##     ## 
+         *    ##    ##     ## ##     ## ##       ########  ##     ## ########  
+         *    ##    ##     ## ##     ## ##       ##     ## ######### ##   ##   
+         *    ##    ##     ## ##     ## ##       ##     ## ##     ## ##    ##  
+         *    ##     #######   #######  ######## ########  ##     ## ##     ##
+         * 
+         */
+
         var btnMenu = /* syntax: html */ `
             <!-- SC Mgr Assistant -->
             <div class="ui menu" id="sc-mgr-assistant">
                 <div class="header item">
                     <i class="big colored ${settings.theme} life ring icon"></i>
+                    ${
+                        (SCRIPT_PREFIX.length > 0) ? '<div class="floating ui black label">BETA</div>' : ''
+                    }
                     Assistant (v${SCRIPT_VERSION})
                 </div>
                 ${
@@ -681,9 +1072,9 @@
                     (settings.showEPM === true) ? `${btnMenuEPM}` : ""
                 }
                 <div class="item">
-                    <button class="ui tiny pink labeled icon button" id="_staffmyteam" data-tooltip="Open quick staff form" data-position="bottom right">
+                    <button class="ui tiny pink labeled icon button" id="_staffmyteam" data-tooltip="Open quick assign form" data-position="bottom right">
                         <i class="users cog icon"></i>
-                        My Team
+                        Quick Assign
                     </button>
                 </div>
                 <div class="item">
@@ -720,355 +1111,514 @@
             `
         ;
 
-        function createHashtags() {
-            let hashtags = settings.hashtags;
-            if (!hashtags || hashtags.length == 0) { return ''; }
-
-            let hashtagsArray = hashtags.replace('#', '').split(',').sort();
-            let hashtagsHtmlArray = [];
-            for (var h in hashtagsArray) {
-                hashtagsHtmlArray.push(`<div class="item" data-value="#${hashtagsArray[h].trim()}">${hashtagsArray[h].trim()}</div>`);
-            }
-            return hashtagsHtmlArray.join('');
+        function fldIndustryHTml(id, width) {
+            return /* syntax: html */  `
+                <div class="${(width) ? width : 'sixteen'} wide required field">
+                    <label>SC Industry</label>
+                    <div class="ui fluid search selection clearable dropdown" id="${id}">
+                        <input type="hidden" name="${id}">
+                        <i class="dropdown icon"></i>
+                        <div class="default text">Provide an SC Industry</div>
+                        <div class="menu">
+                            <div class="header">Agriculture</div>
+                            <div class="item" data-value="9">Agriculture (Agriculture)</div>
+                            <div class="header">Business Services</div>
+                            <div class="item" data-value="1">Advertising & Marketing (Business Services)</div>
+                            <div class="item" data-value="8">Business Services (Business Services)</div>
+                            <div class="item" data-value="4">Commercial Printing (Business Services)</div>
+                            <div class="item" data-value="3">Custom Software & IT Services (IT VAR) (Business Services)</div>
+                            <div class="item" data-value="2">HR & Staffing (Business Services)</div>
+                            <div class="item" data-value="6">Research & Development (Business Services)</div>
+                            <div class="header">Construction</div>
+                            <div class="item" data-value="10">Architecture, Engineering & Design (Construction)</div>
+                            <div class="item" data-value="7">Construction (Construction)</div>
+                            <div class="item" data-value="5">Consumer Services (Consumer Services)</div>
+                            <div class="header">Education</div>
+                            <div class="item" data-value="11">Campus Bookstores (Education)</div>
+                            <div class="item" data-value="12">Education (Education)</div>
+                            <div class="header">Energy, Utilities & Waste</div>
+                            <div class="item" data-value="16">Energy, Utilities & Waste (Energy, Utilities & Waste)</div>
+                            <div class="header">Finance</div>
+                            <div class="item" data-value="17">Cryptocurrency (Finance)</div>
+                            <div class="item" data-value="13">Finance (Finance)</div>
+                            <div class="item" data-value="14">Lending & Brokerage (Finance)</div>
+                            <div class="item" data-value="15">Venture Capital & Private Equity (Finance)</div>
+                            <div class="header">Government</div>
+                            <div class="item" data-value="20">Government: Federal (Government)</div>
+                            <div class="item" data-value="18">Government: State/Local (Government)</div>
+                            <div class="header">Healthcare Services</div>
+                            <div class="item" data-value="19">Elderly Care Services (Healthcare Services)</div>
+                            <div class="item" data-value="21">Federally Qualified Healthcare (FQHC) (Healthcare Services)</div>
+                            <div class="item" data-value="22">Healthcare Services (Healthcare Services)</div>
+                            <div class="item" data-value="101">Life Sciences and Biotech (Healthcare Services)</div>
+                            <div class="item" data-value="24">Medical Laboratories & Imaging Centers (Healthcare Services)</div>
+                            <div class="item" data-value="23">Veterinary Services (Healthcare Services)</div>
+                            <div class="header">Holding Companies & Conglomerates</div>
+                            <div class="item" data-value="25">Holding Companies & Conglomerates (Holding Companies & Conglomerates)</div>
+                            <div class="header">Hospitality</div>
+                            <div class="item" data-value="27">Cultural & Informational Centers (Hospitality)</div>
+                            <div class="item" data-value="29">Gambling & Gaming (Hospitality)</div>
+                            <div class="item" data-value="26">Hospitality (Hospitality)</div>
+                            <div class="item" data-value="30">Lodging & Resorts (Hospitality)</div>
+                            <div class="item" data-value="28">Museums & Art Galleries (Hospitality)</div>
+                            <div class="item" data-value="39">Performing Arts Theaters (Hospitality)</div>
+                            <div class="item" data-value="31">Restaurants (Hospitality)</div>
+                            <div class="item" data-value="32">Sports Teams & Leagues (Hospitality)</div>
+                            <div class="header">Hospitals & Physicians Clinics</div>
+                            <div class="item" data-value="34">Dental Offices (Hospitals & Physicians Clinics)</div>
+                            <div class="item" data-value="33">Hospitals & Physicians Clinics (Hospitals & Physicians Clinics)</div>
+                            <div class="item" data-value="35">Physicians Clinics (Hospitals & Physicians Clinics)</div>
+                            <div class="header">Insurance</div>
+                            <div class="item" data-value="36">Insurance (Insurance)</div>
+                            <div class="header">Law Firms & Legal Services</div>
+                            <div class="item" data-value="37">Law Firms & Legal Services (Law Firms & Legal Services)</div>
+                            <div class="header">Manufacturing</div>
+                            <div class="item" data-value="40">Aerospace & Defense (Manufacturing)</div>
+                            <div class="item" data-value="41">Food & Beverage (Manufacturing)</div>
+                            <div class="item" data-value="42">Industrial Machinery & Equipment (Manufacturing)</div>
+                            <div class="item" data-value="43">Job Shop (Manufacturing)</div>
+                            <div class="item" data-value="44">Life Sciences and Biotech (Manufacturing)</div>
+                            <div class="item" data-value="38">Manufacturing (Manufacturing)</div>
+                            <div class="item" data-value="45">Medical Devices & Equipment (Manufacturing)</div>
+                            <div class="item" data-value="46">Pharmaceuticals (Manufacturing)</div>
+                            <div class="item" data-value="47">Textiles & Apparel (Manufacturing)</div>
+                            <div class="item" data-value="48">Wholesale (Manufacturing)</div>
+                            <div class="header">Media & Internet</div>
+                            <div class="item" data-value="50">Broadcasting (Media & Internet)</div>
+                            <div class="item" data-value="49">Media & Internet (Media & Internet)</div>
+                            <div class="item" data-value="52">Motion Picture and Sound Recording (Media & Internet)</div>
+                            <div class="item" data-value="51">Promotional Products (Media & Internet)</div>
+                            <div class="item" data-value="53">Publishing (Media & Internet)</div>
+                            <div class="header">Minerals & Mining</div>
+                            <div class="item" data-value="54">Minerals & Mining (Minerals & Mining)</div>
+                            <div class="header">Organizations</div>
+                            <div class="item" data-value="56">Food Pantry, Food Share, Food Bank (Organizations)</div>
+                            <div class="item" data-value="57">Non-Profit Organizations & Charitable Foundations (Organizations)</div>
+                            <div class="item" data-value="55">Organizations (Organizations)</div>
+                            <div class="item" data-value="58">Religious Organizations (Organizations)</div>
+                            <div class="header">Real Estate</div>
+                            <div class="item" data-value="59">Real Estate (Real Estate)</div>
+                            <div class="header">Retail</div>
+                            <div class="item" data-value="61">Apparel & Accessories Retail (Retail)</div>
+                            <div class="item" data-value="62">Automobile Deals (Retail)</div>
+                            <div class="item" data-value="63">Automobile Part Stores (Retail)</div>
+                            <div class="item" data-value="64">Convenience Stores, Gas Stations & Liquor Stores (Retail)</div>
+                            <div class="item" data-value="65">Drug Stores & Pharmacies (Retail)</div>
+                            <div class="item" data-value="66">Franchise (Retail)</div>
+                            <div class="item" data-value="67">Grocery Retail (Retail)</div>
+                            <div class="item" data-value="68">Home Improvement & Hardware Retail (Retail)</div>
+                            <div class="item" data-value="60">Retail (Retail)</div>
+                            <div class="item" data-value="69">Vitamins Supplements & Health Stores (Retail)</div>
+                            <div class="item" data-value="70">Wholesale (Retail)</div>
+                            <div class="header">Software</div>
+                            <div class="item" data-value="72">Cryptocurrency (Software)</div>
+                            <div class="item" data-value="77">Platform (Software)</div>
+                            <div class="item" data-value="71">Software (Software)</div>
+                            <div class="item" data-value="73">Software with Inventory, Usage, Subscriptions (Software)</div>
+                            <div class="header">Telecommunications</div>
+                            <div class="item" data-value="74">Telecommunications (Telecommunications)</div>
+                            <div class="header">Transportation</div>
+                            <div class="item" data-value="76">Freight & Logistics Services (Transportation)</div>
+                            <div class="item" data-value="75">Transportation (Transportation)</div>
+                        </div>
+                    </div>
+                </div>
+                `
+            ;
         }
 
+        /**
+         * 
+         * ##     ##  #######  ########     ###    ##          ########  #######  ########  ##     ## 
+         * ###   ### ##     ## ##     ##   ## ##   ##          ##       ##     ## ##     ## ###   ### 
+         * #### #### ##     ## ##     ##  ##   ##  ##          ##       ##     ## ##     ## #### #### 
+         * ## ### ## ##     ## ##     ## ##     ## ##          ######   ##     ## ########  ## ### ## 
+         * ##     ## ##     ## ##     ## ######### ##          ##       ##     ## ##   ##   ##     ## 
+         * ##     ## ##     ## ##     ## ##     ## ##          ##       ##     ## ##    ##  ##     ## 
+         * ##     ##  #######  ########  ##     ## ########    ##        #######  ##     ## ##     ##
+         * 
+         */
+
         var modalContentRequestForm = /* syntax: html */ `
-        <!-- Staff My Team Modal and Form -->
-        <form class="ui form fullscreen modal" id="scr-modal-request-form">
-            <i class="close icon"></i>
-            <div class="header">SC Request Quick Form</div>
-            <div class="content">
+            <!-- Staff My Team Modal and Form -->
+            <form class="ui form overlay fullscreen modal" id="scr-modal-request-form">
+                <i class="close icon"></i>
+                <div style="padding-top: 8px;background-image: url('/assets/@uif-js/component/6.0.38/resources/img/systemheader/color-strip-netsuite.png');background-repeat: repeat-x;background-position: left top;"></div>
+                <div class="header">SC Request Quick Assign Form</div>
+                <div class="scrolling content">
 
-                <!-- Start Grid -->
-                <div class="ui stackable two column grid">
+                    <!-- Start Grid -->
+                    <div class="ui two column grid">
 
-                    <!-- Column One -->
-                    <div class="ten wide column">
+                        <!-- Column One -->
+                        <div class="eleven wide column">
 
-                        <!-- SC Assign -->
-                        <div class="fields">
-                            <div class="nine wide required field">
-                                <label>Assign To (Employee)</label>
-                                <div class="ui fluid search selection dropdown" id="solutionconsultant">
-                                    <input type="hidden" name="solutionconsultant">
-                                    <div class="text">Choose an SC</div>
-                                    <i class="dropdown icon"></i>
-                                </div>
-                            </div>
-
-                            <!-- Assign As Lead -->
-                            <div class="three wide field">
-                                <div class="ui toggle checkbox">
-                                    <input type="checkbox" name="islead" id="islead" tabindex="0" class="hidden" checked>
-                                    <label>Lead SC</label>
-                                </div>
-                            </div>
-
-                            <div class="four wide required field">
-                                <label>Date SC Needed</label>
-                                <div class="ui calendar" id="dateneeded">
-                                    <div class="ui fluid input left icon" >
-                                        <i class="calendar icon"></i>
-                                        <input type="text" placeholder="Date SC Needed" name="dateneeded">
+                            <!-- SC Assign -->
+                            <div class="fields">
+                                <div class="nine wide required field">
+                                    <label>Assign To (Employee)</label>
+                                    <div class="ui fluid search selection dropdown" id="solutionconsultant">
+                                        <input type="hidden" name="solutionconsultant">
+                                        <div class="text">Choose an SC</div>
+                                        <i class="dropdown icon"></i>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Request Details Addendum -->
-                        <div class="field">
-                            <label>SC Request Details Addendum</label>
-                            <textarea rows="3" name="screquestdetailsadd" id="screquestdetailsadd" placeholder="Text to prepend to the beginning of the SC Request Details on Save..."></textarea>
-                        </div>
+                                <!-- Assign As Lead -->
+                                <div class="three wide field">
+                                    <div class="ui toggle checkbox">
+                                        <input type="checkbox" name="islead" id="islead" tabindex="0" class="hidden" checked>
+                                        <label>Lead SC</label>
+                                    </div>
+                                </div>
 
-                        <div class="fields">
-                            <div class="twelve wide required field">
-                                <label>SC Industry</label>
-                                <div class="ui fluid search selection dropdown" id="scmindustry">
-                                    <input type="hidden" name="scmindustry">
-                                    <div class="default text">Provide an SC Industry</div>
-                                    <i class="dropdown icon"></i>
-                                    <div class="menu">
-                                        <div class="header">Agriculture</div>
-                                        <div class="item" data-value="9">Agriculture (Agriculture)</div>
-                                        <div class="header">Business Services</div>
-                                        <div class="item" data-value="1">Advertising & Marketing (Business Services)</div>
-                                        <div class="item" data-value="8">Business Services (Business Services)</div>
-                                        <div class="item" data-value="4">Commercial Printing (Business Services)</div>
-                                        <div class="item" data-value="3">Custom Software & IT Services (IT VAR) (Business Services)</div>
-                                        <div class="item" data-value="2">HR & Staffing (Business Services)</div>
-                                        <div class="item" data-value="6">Research & Development (Business Services)</div>
-                                        <div class="header">Construction</div>
-                                        <div class="item" data-value="10">Architecture, Engineering & Design (Construction)</div>
-                                        <div class="item" data-value="7">Construction (Construction)</div>
-                                        <div class="item" data-value="5">Consumer Services (Consumer Services)</div>
-                                        <div class="header">Education</div>
-                                        <div class="item" data-value="11">Campus Bookstores (Education)</div>
-                                        <div class="item" data-value="12">Education (Education)</div>
-                                        <div class="header">Energy, Utilities & Waste</div>
-                                        <div class="item" data-value="16">Energy, Utilities & Waste (Energy, Utilities & Waste)</div>
-                                        <div class="header">Finance</div>
-                                        <div class="item" data-value="17">Cryptocurrency (Finance)</div>
-                                        <div class="item" data-value="13">Finance (Finance)</div>
-                                        <div class="item" data-value="14">Lending & Brokerage (Finance)</div>
-                                        <div class="item" data-value="15">Venture Capital & Private Equity (Finance)</div>
-                                        <div class="header">Government</div>
-                                        <div class="item" data-value="20">Government: Federal (Government)</div>
-                                        <div class="item" data-value="18">Government: State/Local (Government)</div>
-                                        <div class="header">Healthcare Services</div>
-                                        <div class="item" data-value="19">Elderly Care Services (Healthcare Services)</div>
-                                        <div class="item" data-value="21">Federally Qualified Healthcare (FQHC) (Healthcare Services)</div>
-                                        <div class="item" data-value="22">Healthcare Services (Healthcare Services)</div>
-                                        <div class="item" data-value="101">Life Sciences and Biotech (Healthcare Services)</div>
-                                        <div class="item" data-value="24">Medical Laboratories & Imaging Centers (Healthcare Services)</div>
-                                        <div class="item" data-value="23">Veterinary Services (Healthcare Services)</div>
-                                        <div class="header">Holding Companies & Conglomerates</div>
-                                        <div class="item" data-value="25">Holding Companies & Conglomerates (Holding Companies & Conglomerates)</div>
-                                        <div class="header">Hospitality</div>
-                                        <div class="item" data-value="27">Cultural & Informational Centers (Hospitality)</div>
-                                        <div class="item" data-value="29">Gambling & Gaming (Hospitality)</div>
-                                        <div class="item" data-value="26">Hospitality (Hospitality)</div>
-                                        <div class="item" data-value="30">Lodging & Resorts (Hospitality)</div>
-                                        <div class="item" data-value="28">Museums & Art Galleries (Hospitality)</div>
-                                        <div class="item" data-value="39">Performing Arts Theaters (Hospitality)</div>
-                                        <div class="item" data-value="31">Restaurants (Hospitality)</div>
-                                        <div class="item" data-value="32">Sports Teams & Leagues (Hospitality)</div>
-                                        <div class="header">Hospitals & Physicians Clinics</div>
-                                        <div class="item" data-value="34">Dental Offices (Hospitals & Physicians Clinics)</div>
-                                        <div class="item" data-value="33">Hospitals & Physicians Clinics (Hospitals & Physicians Clinics)</div>
-                                        <div class="item" data-value="35">Physicians Clinics (Hospitals & Physicians Clinics)</div>
-                                        <div class="header">Insurance</div>
-                                        <div class="item" data-value="36">Insurance (Insurance)</div>
-                                        <div class="header">Law Firms & Legal Services</div>
-                                        <div class="item" data-value="37">Law Firms & Legal Services (Law Firms & Legal Services)</div>
-                                        <div class="header">Manufacturing</div>
-                                        <div class="item" data-value="40">Aerospace & Defense (Manufacturing)</div>
-                                        <div class="item" data-value="41">Food & Beverage (Manufacturing)</div>
-                                        <div class="item" data-value="42">Industrial Machinery & Equipment (Manufacturing)</div>
-                                        <div class="item" data-value="43">Job Shop (Manufacturing)</div>
-                                        <div class="item" data-value="44">Life Sciences and Biotech (Manufacturing)</div>
-                                        <div class="item" data-value="38">Manufacturing (Manufacturing)</div>
-                                        <div class="item" data-value="45">Medical Devices & Equipment (Manufacturing)</div>
-                                        <div class="item" data-value="46">Pharmaceuticals (Manufacturing)</div>
-                                        <div class="item" data-value="47">Textiles & Apparel (Manufacturing)</div>
-                                        <div class="item" data-value="48">Wholesale (Manufacturing)</div>
-                                        <div class="header">Media & Internet</div>
-                                        <div class="item" data-value="50">Broadcasting (Media & Internet)</div>
-                                        <div class="item" data-value="49">Media & Internet (Media & Internet)</div>
-                                        <div class="item" data-value="52">Motion Picture and Sound Recording (Media & Internet)</div>
-                                        <div class="item" data-value="51">Promotional Products (Media & Internet)</div>
-                                        <div class="item" data-value="53">Publishing (Media & Internet)</div>
-                                        <div class="header">Minerals & Mining</div>
-                                        <div class="item" data-value="54">Minerals & Mining (Minerals & Mining)</div>
-                                        <div class="header">Organizations</div>
-                                        <div class="item" data-value="56">Food Pantry, Food Share, Food Bank (Organizations)</div>
-                                        <div class="item" data-value="57">Non-Profit Organizations & Charitable Foundations (Organizations)</div>
-                                        <div class="item" data-value="55">Organizations (Organizations)</div>
-                                        <div class="item" data-value="58">Religious Organizations (Organizations)</div>
-                                        <div class="header">Real Estate</div>
-                                        <div class="item" data-value="59">Real Estate (Real Estate)</div>
-                                        <div class="header">Retail</div>
-                                        <div class="item" data-value="61">Apparel & Accessories Retail (Retail)</div>
-                                        <div class="item" data-value="62">Automobile Deals (Retail)</div>
-                                        <div class="item" data-value="63">Automobile Part Stores (Retail)</div>
-                                        <div class="item" data-value="64">Convenience Stores, Gas Stations & Liquor Stores (Retail)</div>
-                                        <div class="item" data-value="65">Drug Stores & Pharmacies (Retail)</div>
-                                        <div class="item" data-value="66">Franchise (Retail)</div>
-                                        <div class="item" data-value="67">Grocery Retail (Retail)</div>
-                                        <div class="item" data-value="68">Home Improvement & Hardware Retail (Retail)</div>
-                                        <div class="item" data-value="60">Retail (Retail)</div>
-                                        <div class="item" data-value="69">Vitamins Supplements & Health Stores (Retail)</div>
-                                        <div class="item" data-value="70">Wholesale (Retail)</div>
-                                        <div class="header">Software</div>
-                                        <div class="item" data-value="72">Cryptocurrency (Software)</div>
-                                        <div class="item" data-value="77">Platform (Software)</div>
-                                        <div class="item" data-value="71">Software (Software)</div>
-                                        <div class="item" data-value="73">Software with Inventory, Usage, Subscriptions (Software)</div>
-                                        <div class="header">Telecommunications</div>
-                                        <div class="item" data-value="74">Telecommunications (Telecommunications)</div>
-                                        <div class="header">Transportation</div>
-                                        <div class="item" data-value="76">Freight & Logistics Services (Transportation)</div>
-                                        <div class="item" data-value="75">Transportation (Transportation)</div>
+                                <div class="four wide required field">
+                                    <label>Date SC Needed</label>
+                                    <div class="ui calendar" id="dateneeded">
+                                        <div class="ui fluid input left icon" >
+                                            <i class="calendar icon"></i>
+                                            <input type="text" placeholder="Date SC Needed" name="dateneeded">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="four wide required field">
-                                <label>Proposed SKU</label>
-                                <div class="ui fluid search selection dropdown" id="scmsku">
-                                    <input type="hidden" name="scmsku">
-                                    <div class="default text">Choose a SKU</div>
-                                    <i class="dropdown icon"></i>
-                                    <div class="menu">
-                                        <div class="item" data-value="Svcs Std/Prm">Svcs Std/Prm</div>
-                                        <div class="item" data-value="FF Std/Prm">FF Std/Prm</div>
-                                        <div class="item" data-value="SW Std/Prm">SW Std/Prm</div>
-                                        <div class="item" data-value="WD Std/Prm">WD Std/Prm</div>
-                                        <div class="item" data-value="MFG Std/Prm">MFG Std/Prm</div>
-                                        <div class="item" data-value="OpenAir Std/Prm">OpenAir Std/Prm</div>
-                                        <div class="item" data-value="Healthcare Std/Prm">Healthcare Std/Prm</div>
-                                        <div class="item" data-value="NFP Std/Prm">NFP Std/Prm</div>
-                                        <div class="item" data-value="Starter">Starter</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="three fields">
+                            <!-- Request Details Addendum -->
                             <div class="field">
-                                <label>Potential Integrations</label>
-                                <input type="text" name="scmaddons" placeholder="List systems">
+                                <label>SC Request Details Addendum</label>
+                                <textarea rows="3" name="screquestdetailsadd" id="screquestdetailsadd" placeholder="Text to prepend to the beginning of the SC Request Details on Save..."></textarea>
                             </div>
-                            <div class="field">
-                                <label>Partners</label>
-                                <input type="text" name="scmpartners" placeholder="Required or known partner(s)">
-                            </div>
-                            <div class="field">
-                                <label>Competitors</label>
-                                <input type="text" name="scmcompetitors" placeholder="Incumbent or competitor(s)">
-                            </div>
-                        </div>
 
-                        <div class="fields">
-                            <!-- Hashtags -->
-                            <div class="six wide field">
-                                <label>Add #hashtags</label>
-                                <div class="ui fluid multiple search selection dropdown" id="hashtags">
-                                    <input type="hidden" name="hashtags">
-                                    <i class="dropdown icon"></i>
-                                    <div class="default text">Add hashtags</div>
-                                    <div class="menu">
-                                        ${ createHashtags() }
+                            <div class="fields">
+                                ${fldIndustryHTml('scmindustry', 'twelve')}
+
+                                <div class="four wide required field">
+                                    <label>Proposed SKU</label>
+                                    <div class="ui fluid search selection clearable dropdown" id="scmsku">
+                                        <input type="hidden" name="scmsku">
+                                        <i class="dropdown icon"></i>
+                                        <div class="default text">Choose a SKU</div>
+                                        <div class="menu">
+                                            <div class="header">General Business</div>
+                                            <div class="item" data-value="Finance">Finance</div>
+                                            <div class="item" data-value="Healthcare">Healthcare</div>
+                                            <div class="item" data-value="Non-Profit">Non-Profit</div>
+                                            <div class="header">Products</div>
+                                            <div class="item" data-value="WD">WD</div>
+                                            <div class="item" data-value="MFG">MFG</div>
+                                            <div class="item" data-value="F&B">F&B</div>
+                                            <div class="item" data-value="H&B">H&B</div>
+                                            <div class="item" data-value="Retail">Retail</div>
+                                            <div class="header">High Tech</div>
+                                            <div class="item" data-value="Project Based">Project Based</div>
+                                            <div class="item" data-value="Services">Services</div>
+                                            <div class="item" data-value="XaaS">XaaS</div>
+                                            <div class="item" data-value="Software">Software</div>
+                                            <div class="item" data-value="Agency">Agency</div>
+                                            <div class="item" data-value="Media">Media</div>
+                                            <div class="item" data-value="Telco">Telco</div>
+                                            <div class="header">Other</div>
+                                            <div class="item" data-value="Starter">Starter</div>
+                                            <div class="item" data-value="SuiteProjects Pro">SuiteProjects Pro</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Products -->
-                            <div class="ten wide field">
-                                <label>Products</label>
-                                <div class="ui fluid multiple three column search selection dropdown" id="products">
-                                    <input type="hidden" name="products">
-                                    <i class="dropdown icon"></i>
-                                    <div class="default text">Add product(s)</div>
-                                    <div class="menu">
-                                        <div class="item" data-value="1">ACS</div>
-                                        <div class="item" data-value="2">Advanced Electronic Bank Payments</div>
-                                        <div class="item" data-value="3">Advanced Manufacturing</div>
-                                        <div class="item" data-value="4">Advanced Order Management</div>
-                                        <div class="item" data-value="5">AP Automation</div>
-                                        <div class="item" data-value="6">Bill Capture</div>
-                                        <div class="item" data-value="7">CPQ</div>
-                                        <div class="item" data-value="8">Demand Planning</div>
-                                        <div class="item" data-value="9">Disaster Recovery</div>
-                                        <div class="item" data-value="10">Dunning</div>
-                                        <div class="item" data-value="11">Edition</div>
-                                        <div class="item" data-value="12">EPM FCC</div>
-                                        <div class="item" data-value="13">EPM FF</div>
-                                        <div class="item" data-value="14">EPM NR</div>
-                                        <div class="item" data-value="15">EPM NSAR</div>
-                                        <div class="item" data-value="16">EPM NSPB</div>
-                                        <div class="item" data-value="17">EPM PCM</div>
-                                        <div class="item" data-value="18">EPM Tax</div>
-                                        <div class="item" data-value="19">Field Service Management</div>
-                                        <div class="item" data-value="20">Financial Management</div>
-                                        <div class="item" data-value="21">Fixed Asset Management</div>
-                                        <div class="item" data-value="22">Incentive Compensation</div>
-                                        <div class="item" data-value="23">Inventory Management</div>
-                                        <div class="item" data-value="24">LCS</div>
-                                        <div class="item" data-value="25">NS Connector</div>
-                                        <div class="item" data-value="26">NS POS</div>
-                                        <div class="item" data-value="27">NSAW</div>
-                                        <div class="item" data-value="28">OneWorld</div>
-                                        <div class="item" data-value="29">OpenAir</div>
-                                        <div class="item" data-value="30">Other</div>
-                                        <div class="item" data-value="31">Payroll</div>
-                                        <div class="item" data-value="33">Quality Management </div>
-                                        <div class="item" data-value="34">Rebate Management</div>
-                                        <div class="item" data-value="35">Revenue Management</div>
-                                        <div class="item" data-value="36">Sandbox</div>
-                                        <div class="item" data-value="37">Smart Count</div>
-                                        <div class="item" data-value="38">SuiteAnalytics Connect</div>
-                                        <div class="item" data-value="39">SuiteBilling</div>
-                                        <div class="item" data-value="40">SuiteCloud Plus</div>
-                                        <div class="item" data-value="41">SuiteCommerce</div>
-                                        <div class="item" data-value="42">SuiteCommerce Instore</div>
-                                        <div class="item" data-value="43">SuiteCommerce MyAccount</div>
-                                        <div class="item" data-value="44">SuitePeople</div>
-                                        <div class="item" data-value="45">SuiteProjects</div>
-                                        <div class="item" data-value="47">Users</div>
-                                        <div class="item" data-value="48">WFM</div>
-                                        <div class="item" data-value="49">WIP and Routings</div>
-                                        <div class="item" data-value="50">WMS</div>
-                                        <div class="item" data-value="51">Work Orders and Assemblies</div>
+                            <div class="three fields">
+                                <div class="field">
+                                    <label>Potential Integrations</label>
+                                    <input type="text" name="scmaddons" placeholder="List systems">
+                                </div>
+                                <div class="field">
+                                    <label>Partners</label>
+                                    <input type="text" name="scmpartners" placeholder="Required or known partner(s)">
+                                </div>
+                                <div class="field">
+                                    <label>Competitors</label>
+                                    <input type="text" name="scmcompetitors" placeholder="Incumbent or competitor(s)">
+                                </div>
+                            </div>
+
+                            <div class="fields">
+                                <!-- Hashtags -->
+                                <div class="six wide field">
+                                    <label>Add #hashtags</label>
+                                    <div class="ui fluid multiple search selection dropdown" id="hashtags">
+                                        <input type="hidden" name="hashtags">
+                                        <i class="dropdown icon"></i>
+                                        <div class="default text">Add hashtags</div>
+                                        <div class="menu">
+                                            ${ createHashtags() }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Products -->
+                                <div class="ten wide field">
+                                    <label>Products</label>
+                                    <div class="ui fluid multiple three column search selection dropdown" id="products">
+                                        <input type="hidden" name="products">
+                                        <i class="dropdown icon"></i>
+                                        <div class="default text">Add product(s)</div>
+                                        <div class="menu">
+                                            <div class="item" data-value="2">Advanced Electronic Bank Payments</div>
+                                            <div class="item" data-value="3">Advanced Manufacturing</div>
+                                            <div class="item" data-value="4">Advanced Order Management</div>
+                                            <div class="item" data-value="5">AP Automation</div>
+                                            <div class="item" data-value="6">Bill Capture</div>
+                                            <div class="item" data-value="7">CPQ</div>
+                                            <div class="item" data-value="8">Demand Planning</div>
+                                            <div class="item" data-value="10">Dunning</div>
+                                            <div class="item" data-value="12">EPM FCC</div>
+                                            <div class="item" data-value="13">EPM FF</div>
+                                            <div class="item" data-value="14">EPM NR</div>
+                                            <div class="item" data-value="15">EPM NSAR</div>
+                                            <div class="item" data-value="16">EPM NSPB</div>
+                                            <div class="item" data-value="17">EPM PCM</div>
+                                            <div class="item" data-value="18">EPM Tax</div>
+                                            <div class="item" data-value="19">Field Service Management</div>
+                                            <div class="item" data-value="20">Financial Management</div>
+                                            <div class="item" data-value="21">Fixed Asset Management</div>
+                                            <div class="item" data-value="22">Incentive Compensation</div>
+                                            <div class="item" data-value="23">Inventory Management</div>
+                                            <div class="item" data-value="25">NS Connector</div>
+                                            <div class="item" data-value="27">NSAW</div>
+                                            <div class="item" data-value="28">OneWorld</div>
+                                            <div class="item" data-value="29">SuiteProjects Pro (OpenAir)</div>
+                                            <div class="item" data-value="31">Payroll</div>
+                                            <div class="item" data-value="33">Quality Management </div>
+                                            <div class="item" data-value="34">Rebate Management</div>
+                                            <div class="item" data-value="35">Revenue Management</div>
+                                            <div class="item" data-value="37">Smart Count</div>
+                                            <div class="item" data-value="38">SuiteAnalytics Connect</div>
+                                            <div class="item" data-value="39">SuiteBilling</div>
+                                            <div class="item" data-value="40">SuiteCloud Plus</div>
+                                            <div class="item" data-value="41">SuiteCommerce</div>
+                                            <div class="item" data-value="42">SuiteCommerce Instore</div>
+                                            <div class="item" data-value="43">SuiteCommerce MyAccount</div>
+                                            <div class="item" data-value="44">SuitePeople</div>
+                                            <div class="item" data-value="45">SuiteProjects</div>
+                                            <div class="item" data-value="48">WFM</div>
+                                            <div class="item" data-value="49">WIP and Routings</div>
+                                            <div class="item" data-value="50">WMS</div>
+                                            <div class="item" data-value="51">Work Orders and Assemblies</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="fields">
+                                <div class="sixteen wide field">
+                                    <label>Red Flags</label>
+                                    <input type="text" name="scmredflags" placeholder="Red flags or cautions">
+                                </div>
+                            </div>
+
+                            ${(settings.includeBodyOfWork) ? `
+                            <h4 class="ui horizontal left aligned divider header">
+                                <i class="tools icon"></i>
+                                Product Skills Search Ranking
+                            </h4>
+
+                            <div class="ui basic segment">
+                                <!-- Dimmer and Loader -->
+                                <div class="ui dimmer" id="tableSkillsLoader">
+                                    <div class="ui indeterminate blue elastic text loader">Gathering and Ranking Skills</div>
+                                </div>
+
+                                <!-- TOP Help text -->
+                                <div class="ui top attached secondary segment" style="border-top: 2px solid var(--btn-color-blue)">
+                                    <p><i class="question circle icon"></i> Need help narrowing down an SC? Select at least one (1) Product above, and optionally set an SC Industry, to search and rank Body of Work data below. Use the filters to control which SCs should be considered.</p>
+                                </div>
+
+                                <!-- MIDDLE Filters and buttons -->
+                                <div class="ui attached segment">
+                                    <div class="fields">
+                                        <div class="field">
+                                            <label>My Team</label>
+                                            <select class="ui fluid clearable dropdown" name="skillfilter-myteam" id="skillfilter-myteam">
+                                                <option value="">Limit to my team</option>
+                                                <option value="T">Yes</option>
+                                                <option value="F">No</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>SC Vertical</label>
+                                            <select class="ui fluid clearable dropdown" multiple="" name="skillfilter-scvertical" id="skillfilter-scvertical">
+                                                <option value="">Filter SC vertical</option>
+                                                <option value="5">General Business</option>
+                                                <option value="58">Products</option>
+                                                <option value="57">High Tech</option>
+                                                <option value="45">Tiger</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>SC Director</label>
+                                            <select class="ui fluid clearable dropdown" name="skillfilter-scdirector" id="skillfilter-scdirector">
+                                                <option value="">Filter SC director</option>
+                                                <option value="karl">Karl</option>
+                                                <option value="rebecca">Rebecca</option>
+                                                <option value="lauren">Lauren</option>
+                                                <option value="robyn">Robyn</option>
+                                                <option value="jeff">Jeff</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>SC Tier</label>
+                                            <select class="ui fluid clearable dropdown" multiple="" name="skillfilter-sctier" id="skillfilter-sctier">
+                                                <option value="">Filter SC tier</option>
+                                                <option value="29">LMM</option>
+                                                <option value="28">MM/Corp</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>SC Region</label>
+                                            <select class="ui fluid clearable dropdown" multiple="" name="skillfilter-scregion" id="skillfilter-scregion">
+                                                <option value="">Filter SC region</option>
+                                                <option value="48">East</option>
+                                                <option value="49">Central</option>
+                                                <option value="50">West</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>Results Sorting</label>
+                                            <select class="ui fluid dropdown" name="skillfilter-sorting" id="skillfilter-sorting">
+                                                <option value="ias">Industry > Availability > Skills</option>
+                                                <option value="ais">Availability > Industry > Skills</option>
+                                                <option value="sia">Skills > Industry > Availability</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label>Skills Operator</label>
+                                            <select class="ui fluid dropdown" name="skillfilter-operator" id="skillfilter-operator">
+                                                <option value="any">Has ANY skills</option>
+                                                <option value="all">Has ALL skills</option>
+                                            </select>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="ui blue button" id="productskillsearch"><i class="icon search"></i>Search Skills</div>
+
+                                </div>
+
+                                <!-- BOTTOM Main table -->
+                                <div class="ui bottom attached segment">
+
+                                    <table id="bodyofwork" class="ui compact small selectable sortable celled table"></table>
+
+                                </div>
+
+                            </div>
+                            ` : ''}
+
+
+                        </div>
+
+                        <!-- Column Two -->
+                        <div class="five wide column">
+
+                            <!-- Opp Details -->
+                            ${
+                                getRequestMetadataHtml()
+                            }
+
+                            <!-- Request Details -->
+                            <div class="field">
+                                <label>SC Request Details</label>
+                                <textarea rows="20" name="screquestdetails" id="screquestdetails" readonly="" style="background-color:lightgray;"></textarea>
+                            </div>
+
+                            <!-- FLM Notes -->
+                            <div class="field">
+                                <label>Sales Manager Notes</label>
+                                <textarea rows="5" name="salesmanagernotes" id="salesmanagernotes" readonly="" style="background-color:lightgray;"></textarea>
+                            </div>
+
+                            <!-- LAUNCHPAD -->
+                            <div class="ui accordion field">
+                                <div class="title">
+                                    <i class="icon dropdown"></i>
+                                    Toggle Launchpad Information
+                                </div>
+                                <div class="content">
+                                    <div class="field">
+                                        <label>Qualifying Questions</label>
+                                        <textarea rows="20" name="launchpadqual" id="launchpadqual" readonly="" style="background-color:lightgray;"></textarea>
+                                    </div>
+                                    <div class="field">
+                                        <label>Launchpad Notes</label>
+                                        <textarea rows="5" name="launchpadnotes" id="launchpadnotes" readonly="" style="background-color:lightgray;"></textarea>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="fields">
-                            <div class="sixteen wide field">
-                                <label>Red Flags</label>
-                                <input type="text" name="scmredflags" placeholder="Red flags or cautions">
-                            </div>
-                        </div>
-
                     </div>
+                    <!-- End Grid -->
 
-                    <!-- Column Two -->
-                    <div class="six wide column">
-
-                        <!-- Request Details -->
-                        <div class="field">
-                            <label>SC Request Details</label>
-                            <textarea rows="20" name="screquestdetails" id="screquestdetails" readonly="" style="background-color:lightgray;"></textarea>
-                        </div>
-
-                        <!-- FLM Notes -->
-                        <div class="field">
-                            <label>Sales Manager Notes</label>
-                            <textarea rows="5" name="salesmanagernotes" id="salesmanagernotes" readonly="" style="background-color:lightgray;"></textarea>
-                        </div>
-                    </div>
                 </div>
-                <!-- End Grid -->
+                <div class="actions">
+                    <button type="submit" class="ui green approve button" id="submitform">Apply Changes</button>
+                    <div class="ui reset button">Reset</div>
+                    <div class="ui black deny button">Dismiss</div>
+                </div>
+            </form>
+            `
+        ;
 
-            </div>
-            <div class="actions">
-                <button type="submit" class="ui green approve button" id="submitform">Apply Changes</button>
-                <div class="ui reset button">Reset</div>
-                <div class="ui black deny button">Dismiss</div>
-            </div>
-        </form>
-        `
-
+        /**
+         * 
+         * ##     ##  #######  ########     ###    ##          ########   #######  ########  ##     ## ########  
+         * ###   ### ##     ## ##     ##   ## ##   ##          ##     ## ##     ## ##     ## ##     ## ##     ## 
+         * #### #### ##     ## ##     ##  ##   ##  ##          ##     ## ##     ## ##     ## ##     ## ##     ## 
+         * ## ### ## ##     ## ##     ## ##     ## ##          ########  ##     ## ########  ##     ## ########  
+         * ##     ## ##     ## ##     ## ######### ##          ##        ##     ## ##        ##     ## ##        
+         * ##     ## ##     ## ##     ## ##     ## ##          ##        ##     ## ##        ##     ## ##        
+         * ##     ##  #######  ########  ##     ## ########    ##         #######  ##         #######  ##
+         * 
+         */
         var modalContentNotesForm = /* syntax: html */ `
-        <!-- SC Mgr Notes Modal -->
-        <form class="ui small form modal" id="scr-modal-notes-form">
-            <i class="close icon"></i>
-            <div class="content">
+            <!-- SC Mgr Notes Modal -->
+            <form class="ui small form modal" id="scr-modal-notes-form">
+                <i class="close icon"></i>
+                <div class="content">
 
-                <!-- Request Details Addendum -->
-                <div class="required field">
-                    <label>SCM Staffing Notes</label>
-                    <textarea rows="3" name="scmstaffingnotes" id="scmstaffingnotes" placeholder="Why are you sending this cross-vertical?"></textarea>
-                </div>
+                    <!-- Request Details Addendum -->
+                    <div class="required field">
+                        <label>SCM Staffing Notes</label>
+                        <textarea rows="3" name="scmstaffingnotes" id="scmstaffingnotes" placeholder="Why are you sending this cross-vertical?"></textarea>
+                    </div>
 
-                <!-- Assign As Lead -->
-                <div class="field">
-                    <div class="ui toggle checkbox">
-                        <input type="checkbox" name="needsemg" id="needsemg" tabindex="0" class="hidden">
-                        <label>Needs EMG support or review</label>
+                    <!-- Industry -->
+                    ${fldIndustryHTml('scmindustry-popup')}
+
+                    <!-- Emerging -->
+                    <div class="field">
+                        <div class="ui toggle checkbox">
+                            <input type="checkbox" name="needsemg" id="needsemg" tabindex="0" class="hidden">
+                            <label>Needs EMG support or review</label>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="actions">
-                <button type="submit" class="ui green approve button" id="submitform">Apply Changes</button>
-                <div class="ui black deny button">Dismiss</div>
-            </div>
-        </form>
-        `
+                <div class="actions">
+                    <button type="submit" class="ui green approve button" id="submitform">Apply Changes</button>
+                    <div class="ui black deny button">Dismiss</div>
+                </div>
+            </form>
+            `
+        ;
 
-        var fomanticCss = /* syntax: html */ `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.css" integrity="sha256-lT1UJMnT8Tu/iZ/FT7mJlzcRoe3yhl3K8oyCebjP8qw=" crossorigin="anonymous" referrerpolicy="no-referrer">`;
+        var fomanticCss = /* syntax: html */ `
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.css" integrity="sha256-lT1UJMnT8Tu/iZ/FT7mJlzcRoe3yhl3K8oyCebjP8qw=" crossorigin="anonymous" referrerpolicy="no-referrer">
+            `
+        ;
 
         $('head').append(fomanticCss);
         $('body').append(modalContentRequestForm);
@@ -1081,24 +1631,51 @@
         // $('#main_form table table').children('tbody').eq(1).append(btnMenu);
         // $('#sc-mgr-assistant-col').attr('colspan', nsBtnBarCnt);
 
+        function createHashtags() {
+            let hashtags = settings.hashtags;
+            if (!hashtags || hashtags.length == 0) { return ''; }
+
+            let hashtagsArray = hashtags.replace('#', '').split(',').sort();
+            let hashtagsHtmlArray = [];
+            for (var h in hashtagsArray) {
+                hashtagsHtmlArray.push(`<div class="item" data-value="#${hashtagsArray[h].trim()}">${hashtagsArray[h].trim()}</div>`);
+            }
+            return hashtagsHtmlArray.join('');
+        }
+
         let pageTitle = $('.uir-page-title-secondline');
         let pageTitleNew = $('.uir-page-title');
-        (pageTitle.length !== 0) ? pageTitle.append(btnMenu) : pageTitleNew.append(btnMenu);
+        let pageTitleBig = $('.uir-page-title-record');
+        // (pageTitle.length !== 0) ? pageTitle.append(btnMenu) : pageTitleNew.append(btnMenu);
+        pageTitleBig.after(btnMenu);
 
 
         /**
-         * SUITESCRIPT FUNCTIONS
-         */
+        * +===================================================================================================+
+        * |                                                                                                   |
+        * |    ######  ##     ## #### ######## ########  ######   ######  ########  #### ########  ########   |
+        * |   ##    ## ##     ##  ##     ##    ##       ##    ## ##    ## ##     ##  ##  ##     ##    ##      |
+        * |   ##       ##     ##  ##     ##    ##       ##       ##       ##     ##  ##  ##     ##    ##      |
+        * |    ######  ##     ##  ##     ##    ######    ######  ##       ########   ##  ########     ##      |
+        * |         ## ##     ##  ##     ##    ##             ## ##       ##   ##    ##  ##           ##      |
+        * |   ##    ## ##     ##  ##     ##    ##       ##    ## ##    ## ##    ##   ##  ##           ##      |
+        * |    ######   #######  ####    ##    ########  ######   ######  ##     ## #### ##           ##      |
+        * |                                                                                                   |
+        * +===================================================================================================+
+        */
+
         function getCurrentEmp() {
             var curUser = nlapiGetUser();
-            var filters = new Array();
-            filters[0] = new nlobjSearchFilter('custrecord_emproster_emp', null, 'is', curUser);
-            var columns = new Array();
-            columns[0] = new nlobjSearchColumn('custrecord_emproster_vertical_amo');
-            columns[1] = new nlobjSearchColumn('custrecord_emproster_salesteam');
-            columns[2] = new nlobjSearchColumn('custrecord_emproster_salesregion');
-            columns[3] = new nlobjSearchColumn('custrecord_emproster_sales_tier');
-            columns[4] = new nlobjSearchColumn('name');
+            var filters = [];
+            filters.push(new nlobjSearchFilter('custrecord_emproster_emp', null, 'is', curUser));
+
+            var columns = [];
+            columns.push(new nlobjSearchColumn('custrecord_emproster_vertical_amo'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_salesteam'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_salesregion'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_sales_tier'));
+            columns.push(new nlobjSearchColumn('name'));
+
             var results = nlapiSearchRecord('customrecord_emproster', null, filters, columns);
             return results[0];
         }
@@ -1116,7 +1693,126 @@
             "jason"  : 684320
         };
 
+        function getWorkloadData() {
+            var workload = {};
+
+            const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
+            const teamId = empRec.getValue('custrecord_emproster_salesteam');
+            const regId = empRec.getValue('custrecord_emproster_salesregion');
+            const tierId = empRec.getValue('custrecord_emproster_sales_tier'); // 10, 28, 29 are all valid SC Tier IDs
+
+            // Date helpers
+            const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+            const addMonths = (input, months) => {
+                const date = new Date(input);
+                date.setDate(1);
+                date.setMonth(date.getMonth() + months);
+                date.setDate(Math.min(input.getDate(), getDaysInMonth(date.getFullYear(), date.getMonth()+1)));
+                return date;
+            }
+
+            const _today = new Date();
+            const sixMonthsAgo = addMonths(_today, -6);
+            const sixMonthsAgoFormatted = nlapiDateToString(sixMonthsAgo, 'date');
+
+            // filter on current, active team
+            var filters = [];
+
+            filters.push(new nlobjSearchFilter('custrecord_screq_status', null, 'is', 2)); // Request Status = Staffed
+            filters.push(new nlobjSearchFilter('created', null, 'onorafter', sixMonthsAgoFormatted));
+
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rosterstatus', 'custrecord_screq_assignee', 'is', 1));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_eminactive', 'custrecord_screq_assignee', 'is', 'F'));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', 'custrecord_screq_assignee', 'is', teamId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', 'custrecord_screq_assignee', 'is', regId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', 'custrecord_screq_assignee', 'is', 25)); // this should filter to QB = Solution Consultant
+
+            if (settings.filterMe === true) {
+                filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_screq_assignee', 'is', _ids.me));
+            }
+
+            if (settings.filterVertical === true) {
+                filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_screq_assignee', 'is', vertId));
+            }
+
+            if (settings.filterTier === true) {
+                filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_screq_assignee', 'is', tierId));
+            }
+
+            if (settings.filterDirector) {
+                const dirName = settings.filterDirector;
+                switch (dirName) {
+                    case "jeff":
+                    case "karl":
+                    case "rebecca":
+                    case "lauren":
+                    case "robyn":
+                        filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_screq_assignee', 'is', _ids[dirName]));
+                        break;
+                    default:
+                        shout(`Invalid director name provided: ${dirName}.`);
+                }
+            }
+
+            // return id, name, location, and availability data
+            var columns = [];
+            columns.push(new nlobjSearchColumn('internalid', 'custrecord_screq_assignee', 'group'));
+            // columns.push(new nlobjSearchColumn('custrecord_screq_assignee', null, 'group'));
+            // columns.push(new nlobjSearchColumn('internalid', null, 'count'));
+
+            var columnLoad = new nlobjSearchColumn('formulanumeric', null, 'sum');
+            columnLoad.setFormula('CASE WHEN {custrecord_screq_date_sc_needed} >= ({today}-30) THEN 1 ELSE 0 END');
+            columnLoad.setFunction('percentOfTotal');
+            columnLoad.setLabel('Load');
+            columns.push(columnLoad);
+
+            var columnInplay = new nlobjSearchColumn('formulanumeric', null, 'sum');
+            columnInplay.setFormula("CASE WHEN {custrecord_screq_engmnt_status} IN ('Not Started', 'In Progress') THEN 1 ELSE 0 END");
+            columnInplay.setLabel('Inplay');
+            columns.push(columnInplay);
+
+            var results = nlapiSearchRecord('customrecord_sc_request', null, filters, columns);
+
+            if (!results || results.length < 1) {
+                shout('Error getting team workload!');
+                return;
+            }
+
+            for (var _i = results.length - 1; _i >= 0; _i--) {
+
+                var result = results[_i];
+                var scName = result.getValue('internalid', 'custrecord_screq_assignee', 'group');
+                var tmpArray = [0, 0];
+
+                var allColumns = result.getAllColumns();
+
+                for (var j = 0; j < allColumns.length; j++) {
+
+                    var column = allColumns[j];
+                    var columnLabel = column.getLabel();
+                    var columnValue = result.getValue(column);
+
+                    switch (columnLabel) {
+                        case "Load":
+                            tmpArray[0] = columnValue;
+                            break;
+                        case "Inplay":
+                            tmpArray[1] = columnValue;
+                            break;
+
+                    }
+                }
+
+                workload[scName] = tmpArray;
+            }
+
+            // shout(workload);
+            return workload;
+        }
+
         function getPeopleData() {
+            var workloadData = (settings.includeAvailability) ? getWorkloadData() : {};
             var people = [];
 
             const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
@@ -1125,13 +1821,14 @@
             const tierId = empRec.getValue('custrecord_emproster_sales_tier'); // 10, 28, 29 are all valid SC Tier IDs
 
             // filter on current, active team
-            var filters = new Array();
+            var filters = [];
 
-            filters[0] = new nlobjSearchFilter('custrecord_emproster_rosterstatus', null, 'is', 1);
-            filters[1] = new nlobjSearchFilter('custrecord_emproster_eminactive', null, 'is', 'F');
-            filters[2] = new nlobjSearchFilter('custrecord_emproster_salesteam', null, 'is', teamId);
-            filters[3] = new nlobjSearchFilter('custrecord_emproster_salesregion', null, 'is', regId);
-            filters[4] = new nlobjSearchFilter('custrecord_emproster_sales_qb', null, 'is', 25); // this should filter to QB = Solution Consultant
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rosterstatus', null, 'is', 1));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_eminactive', null, 'is', 'F'));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', null, 'is', teamId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', null, 'is', regId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', null, 'is', 25)); // this should filter to QB = Solution Consultant
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rdept', null, 'is', 482)); // Sales & Marketing : HQ - (n) : Solution Consultant - (n)
 
             if (settings.filterMe === true) {
                 filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', null, 'is', _ids.me));
@@ -1161,14 +1858,14 @@
             }
 
             // return id, name, location, and availability data
-            var columns = new Array();
-            columns[0] = new nlobjSearchColumn('internalid');
-            columns[1] = new nlobjSearchColumn('custrecord_emproster_firstname');
-            columns[2] = new nlobjSearchColumn('custrecord_emproster_lastname');
-            columns[3] = new nlobjSearchColumn('custrecord_emproster_olocation');
-            columns[4] = new nlobjSearchColumn('custrecord_emproster_avail');
-            columns[5] = new nlobjSearchColumn('custrecord_emproster_avail_notes');
-            columns[6] = new nlobjSearchColumn('custrecord_emproster_avail_notes_res');
+            var columns = [];
+            columns.push(new nlobjSearchColumn('internalid'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_firstname'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_lastname'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_olocation'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes_res'));
 
             var results = nlapiSearchRecord('customrecord_emproster', null, filters, columns);
 
@@ -1176,39 +1873,917 @@
                 shout('Error getting team availability!');
                 return;
             }
+
             for (var _i = results.length - 1; _i >= 0; _i--) {
 
+                var _id = results[_i].getId();
+                var _workload = (Object.keys(workloadData).length !== 0) ? workloadData[_id.toString()] : null;
+
                 var newPerson = new Person(
-                    results[_i].getId(),
+                    _id,
                     results[_i].getValue('custrecord_emproster_firstname'),
                     results[_i].getValue('custrecord_emproster_lastname'),
                     results[_i].getText('custrecord_emproster_olocation'),
                     results[_i].getText('custrecord_emproster_avail'),
                     results[_i].getValue('custrecord_emproster_avail_notes'),
-                    results[_i].getValue('custrecord_emproster_avail_notes_res')
+                    results[_i].getValue('custrecord_emproster_avail_notes_res'),
+                    (_workload && _workload.length > 0) ? _workload[0] : 0,
+                    (_workload && _workload.length > 0) ? _workload[1] : 0
                 );
 
                 people.push(newPerson);
             }
 
+            function sortPeopleData(people, key, ascending) {
+                people.sort((a, b) => {
+                    let valueA, valueB;
+
+                    // Get the appropriate values based on the key
+                    if (key === '30 day load') {
+                        // these values look like "9.999%"
+                        valueA = parseFloat(a.weight);
+                        valueB = parseFloat(b.weight);
+                    } else if (key === 'In Play') {
+                        // these values look like "9"
+                        valueA = parseInt(a.inplay);
+                        valueB = parseInt(b.inplay);
+                    } else if (key === 'SC Name') {
+                        // these values look like "First Last"
+                        valueA = a.fullname.toLowerCase(); // case-insensitive sorting
+                        valueB = b.fullname.toLowerCase();
+                    } else {
+                        shout('Invalid sort key; check settings.')
+                        return 0;
+                    }
+
+                    // Compare the values
+                    if (valueA < valueB) return ascending ? -1 : 1;
+                    if (valueA > valueB) return ascending ? 1 : -1;
+                    return 0; // If values are equal
+                });
+            }
+
+            const sortBy     = settings.sortAvailabilityBy || 'SC Name';
+            const sortAsc    = (settings.sortAvailabilityDirection === 'Desc') ? false : true;
+
+            sortPeopleData(people, sortBy, sortAsc);
             return people;
         }
 
-        function checkCache() {
-            shout(`Cache set to ${CACHE_DURATION_MS}ms`);
+        /**
+         * Get custom skills filters from form
+         * @return {obj} Filter obj which contains two keys.
+         */
+        function getTableFilters() {
+            var filters = {};
+            var fIndustry = [];
+            var fSkills = [];
 
-            var getCacheArray = GM_SuperValue.get('people_cache');
+            // my team
+            const filterMyTeam = $('#skillfilter-myteam').dropdown('get value') || null;
+            if (filterMyTeam && filterMyTeam === 'T') {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee', 'is', _ids.me));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
+                // shout('Table filter: My Team');
+            }
+
+            // sc vertical
+            const filterVertical = $('#skillfilter-scvertical').dropdown('get values') || null;
+            if (filterVertical && filterVertical.length > 0) {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee', 'anyof', filterVertical));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'anyof', filterVertical));
+                // shout('Table filter: SC Vertical');
+            }
+
+            // sc director
+            const filterDirector = $('#skillfilter-scdirector').dropdown('get value') || null;
+
+            switch (filterDirector) {
+                case "jeff":
+                case "karl":
+                case "rebecca":
+                case "lauren":
+                case "robyn":
+                    fSkills.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_ssm_skill_employee', 'is', _ids[filterDirector]));
+                    fIndustry.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[filterDirector]));
+                    // shout('Table filter: SC Director');
+                    break;
+                default:
+                    shout(`Invalid director name provided: ${filterDirector}.`);
+            }
+
+            // sc tier
+            const filterTier = $('#skillfilter-sctier').dropdown('get values') || null;
+            if (filterTier && filterTier.length > 0) {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee', 'anyof', filterTier));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'anyof', filterTier));
+                // shout('Table filter: SC Tier');
+            }
+
+            // sc region
+            const filterRegion = $('#skillfilter-scregion').dropdown('get values') || null;
+            if (filterRegion && filterRegion.length > 0) {
+                fSkills.push(new nlobjSearchFilter('custrecord_emproster_salessubregion', 'custrecord_ssm_skill_employee', 'anyof', filterRegion));
+                fIndustry.push(new nlobjSearchFilter('custrecord_emproster_salessubregion', 'custrecord_sr_ind_rating_employee', 'anyof', filterRegion));
+                // shout('Table filter: SC Region');
+            }
+
+            // sorting
+            const filterSorting = $('#skillfilter-sorting').dropdown('get value') || 'ias';
+            const filterOperator = $('#skillfilter-operator').dropdown('get value') || 'any';
+
+            filters.industry = fIndustry;
+            filters.skills = fSkills;
+            filters.sorting = filterSorting;
+            filters.operator = filterOperator;
+
+            shout('Table filters: ' + JSON.stringify(filters));
+
+            return filters;
+        }
+
+        function getBodyOfWorkIndustryData(industryId, tableFilters) {
+            if (!industryId) { return null; }
+
+            var industryData = [];
+
+            const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
+            const teamId = empRec.getValue('custrecord_emproster_salesteam');
+            const regId = empRec.getValue('custrecord_emproster_salesregion');
+            const tierId = empRec.getValue('custrecord_emproster_sales_tier'); // 10, 28, 29 are all valid SC Tier IDs
+
+            // filter on current, active team
+            var filters = [];
+
+            filters.push(new nlobjSearchFilter('custrecord_sr_ind_rating_subindustry', null, 'is', industryId));
+
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rosterstatus', 'custrecord_sr_ind_rating_employee', 'is', 1));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_eminactive', 'custrecord_sr_ind_rating_employee', 'is', 'F'));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', 'custrecord_sr_ind_rating_employee', 'is', teamId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', 'custrecord_sr_ind_rating_employee', 'is', regId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', 'custrecord_sr_ind_rating_employee', 'is', 25)); // this should filter to QB = Solution Consultant
+
+            if (tableFilters && tableFilters.length > 0) {
+                filters = filters.concat(tableFilters);
+            } else {
+                if (settings.filterMe === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_sr_ind_rating_employee', 'is', _ids.me));
+                }
+
+                if (settings.filterVertical === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_sr_ind_rating_employee', 'is', vertId));
+                }
+
+                if (settings.filterTier === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_sr_ind_rating_employee', 'is', tierId));
+                }
+
+                if (settings.filterDirector) {
+                    const dirName = settings.filterDirector;
+                    switch (dirName) {
+                        case "jeff":
+                        case "karl":
+                        case "rebecca":
+                        case "lauren":
+                        case "robyn":
+                            filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_sr_ind_rating_employee', 'is', _ids[dirName]));
+                            break;
+                        default:
+                            shout(`Invalid director name provided: ${dirName}.`);
+                    }
+                }
+            }
+
+            var columns = [];
+            columns.push(new nlobjSearchColumn('internalid'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_employee'));
+            columns.push(new nlobjSearchColumn('internalid', 'custrecord_sr_ind_rating_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_industry'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating_subindustry'));
+            columns.push(new nlobjSearchColumn('custrecord_sr_ind_rating'));
+
+            // var nRating = new nlobjSearchColumn('formulanumeric', null, 'sum');
+            // nRating.setFormula("TO_NUMBER(SUBSTR({custrecord_sr_ind_rating}, 1, 1))");
+            // nRating.setLabel('nRating');
+            // columns.push(nRating);
+
+            var results = nlapiSearchRecord('customrecord_sr_industry_rating_entry', null, filters, columns);
+
+            if (!results || results.length < 1) {
+                shout('Error getting team workload!');
+                return;
+            }
+
+            for (var _i = results.length - 1; _i >= 0; _i--) {
+
+                var result       = results[_i];
+                var id           = result.getId();
+                var employee     = result.getText('custrecord_sr_ind_rating_employee');
+                var employeeId   = result.getValue('internalid', 'custrecord_sr_ind_rating_employee');
+                var industry     = result.getText('custrecord_sr_ind_rating_industry');
+                var subindustry  = result.getText('custrecord_sr_ind_rating_subindustry');
+                var rating       = Array.from(result.getText('custrecord_sr_ind_rating'))[0]; // only pull in the numeric rating, not the text
+
+                var data = [
+                    employeeId,
+                    employee,
+                    industry,
+                    subindustry,
+                    rating
+                ];
+
+                industryData.push(data);
+            }
+
+            shout("Industry data:", industryData);
+            return industryData;
+        }
+
+        function getBodyOfWorkSkillData(skillIds, tableFilters) {
+            if (!skillIds) { return null; }
+
+            shout('skillIds: ', skillIds);
+
+            var skills = [];
+
+            const vertId = empRec.getValue('custrecord_emproster_vertical_amo');
+            const teamId = empRec.getValue('custrecord_emproster_salesteam');
+            const regId = empRec.getValue('custrecord_emproster_salesregion');
+            const tierId = empRec.getValue('custrecord_emproster_sales_tier'); // 10, 28, 29 are all valid SC Tier IDs
+
+            // filter on current, active team
+            var filters = [];
+
+            filters.push(new nlobjSearchFilter('custrecord_ssm_skill_entry', null, 'anyof', skillIds));
+
+            filters.push(new nlobjSearchFilter('custrecord_emproster_rosterstatus', 'custrecord_ssm_skill_employee', 'is', 1));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_eminactive', 'custrecord_ssm_skill_employee', 'is', 'F'));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesteam', 'custrecord_ssm_skill_employee', 'is', teamId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_salesregion', 'custrecord_ssm_skill_employee', 'is', regId));
+            filters.push(new nlobjSearchFilter('custrecord_emproster_sales_qb', 'custrecord_ssm_skill_employee', 'is', 25)); // this should filter to QB = Solution Consultant
+
+            if (tableFilters && tableFilters.length > 0) {
+                filters = filters.concat(tableFilters);
+            } else {
+
+                if (settings.filterMe === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee', 'is', _ids.me));
+                }
+
+                if (settings.filterVertical === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee', 'is', vertId));
+                }
+
+                if (settings.filterTier === true) {
+                    filters.push(new nlobjSearchFilter('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee', 'is', tierId));
+                }
+
+                if (settings.filterDirector) {
+                    const dirName = settings.filterDirector;
+                    switch (dirName) {
+                        case "jeff":
+                        case "karl":
+                        case "rebecca":
+                        case "lauren":
+                        case "robyn":
+                            filters.push(new nlobjSearchFilter('custrecord_emproster_oml7', 'custrecord_ssm_skill_employee', 'is', _ids[dirName]));
+                            break;
+                        default:
+                            shout(`Invalid director name provided: ${dirName}.`);
+                    }
+                }
+            }
+
+            var columns = [];
+            columns.push(new nlobjSearchColumn('internalid'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('internalid', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_subsection'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_entry'));
+            columns.push(new nlobjSearchColumn('custrecord_ssm_skill_rating'));
+            // columns.push(new nlobjSearchColumn('custrecord_last_updated'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_olocation', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_salessubregion', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee'));
+            columns.push(new nlobjSearchColumn('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee'));
+
+            // var nRating = new nlobjSearchColumn('formulanumeric', null, 'sum');
+            // nRating.setFormula("TO_NUMBER(SUBSTR({custrecord_sr_ind_rating}, 1, 1))");
+            // nRating.setLabel('nRating');
+            // columns.push(nRating);
+
+            var results = nlapiSearchRecord('customrecord_ssm_entry', null, filters, columns);
+
+            if (!results || results.length < 1) {
+                shout('Error getting team workload!');
+                return;
+            }
+
+            for (var _i = results.length - 1; _i >= 0; _i--) {
+
+                var result         = results[_i];
+                var id             = result.getId();
+                var employee       = result.getText('custrecord_ssm_skill_employee');
+                var employeeId     = result.getText('internalid', 'custrecord_ssm_skill_employee');
+                var manager        = result.getText('custrecord_emproster_mgrroster', 'custrecord_ssm_skill_employee');
+                var availability   = result.getText('custrecord_emproster_avail', 'custrecord_ssm_skill_employee');
+                var avail_notes    = result.getValue('custrecord_emproster_avail_notes', 'custrecord_ssm_skill_employee');
+                var avail_res      = result.getValue('custrecord_emproster_avail_notes_res', 'custrecord_ssm_skill_employee');
+                var location       = result.getText('custrecord_emproster_olocation', 'custrecord_ssm_skill_employee');
+                var region         = result.getText('custrecord_emproster_salessubregion', 'custrecord_ssm_skill_employee');
+                var vertical       = result.getText('custrecord_emproster_vertical_amo', 'custrecord_ssm_skill_employee');
+                var tier           = result.getText('custrecord_emproster_sales_tier', 'custrecord_ssm_skill_employee');
+                var subsection     = result.getText('custrecord_ssm_skill_subsection');
+                var skill          = result.getText('custrecord_ssm_skill_entry');
+                var rating         = Array.from(result.getText('custrecord_ssm_skill_rating'))[0]; // only pull in the numeric rating, not the text
+                var ratingWeighted = generateWeightedRating(rating);
+                // var lastupdate     = result.getValue('custrecord_last_updated');
+
+                var data = [
+                    employeeId,
+                    employee,
+                    manager,
+                    subsection,
+                    skill,
+                    rating,
+                    ratingWeighted,
+                    availability,
+                    avail_notes,
+                    avail_res,
+                    location,
+                    region,
+                    vertical,
+                    tier
+                ];
+
+                skills.push(data);
+            }
+
+            shout('All skills:', skills);
+            return skills;
+        }
+
+        function consolidateSkillsData(data, sortKey, sortOperator) {
+            // now passing array of 2 results...
+            const skillsData = data[0];
+            const industryData = data[1];
+            if (!skillsData || skillsData.length === 0) { return null; }
+
+            let aggregatedScores = skillsData.reduce((acc, [
+                employeeId,
+                employee,
+                manager,
+                subsection,
+                skill,
+                rating,
+                ratingWeighted,
+                availability,
+                avail_notes,
+                avail_res,
+                location,
+                region,
+                vertical,
+                tier
+            ]) => {
+                // If the employee ID is not yet in the accumulator, initialize it with a rating of 0 and an empty skills string
+                if (!acc[employee]) {
+                    acc[employee] = {
+                        employeeId     : employeeId,
+                        manager        : manager,
+                        location       : extractLocationString(location),
+                        region         : region,
+                        vertical       : vertical,
+                        tier           : tier.replace('Solution Consultant - ', ''),
+                        availability   : availability.toLowerCase(),
+                        avail_notes    : avail_notes,
+                        avail_res      : avail_res,
+                        weightedRating : 0,
+                        skillsList     : ''
+                    };
+                }
+
+                // Sum the rating for the current employee
+                acc[employee].weightedRating += ratingWeighted;
+
+                // Append the skill and rating to the skills string
+                acc[employee].skillsList += `${skill}-${rating}, `;
+
+                return acc;
+            }, {});
+
+            if (sortOperator === 'all') {
+                // remove employees who have a 0 in any skill here...
+            }
+
+            // Clean up the trailing comma and space from the skills string
+            Object.keys(aggregatedScores).forEach(employee => {
+                aggregatedScores[employee].skillsList = aggregatedScores[employee].skillsList.replace(/,\s*$/, "");
+            });
+
+            // Find the maximum rating among all employees
+            const maxRating = Math.max(...Object.values(aggregatedScores).map(employee => employee.weightedRating));
+
+            function createSkillsHtmlTable(skillsString) {
+                // Split the string into individual skill-rating pairs
+                const skillsArray = skillsString.split(", ");
+            
+                // Start creating the table structure
+                let tableHTML = '<table class="ui basic collapsing table">';
+            
+                // Loop through each skill-rating pair
+                skillsArray.forEach(skillRating => {
+                    // Split each pair into skill and rating
+                    let [skill, rating] = skillRating.split("-");
+                    
+                    // Add a row for each skill and rating
+                    tableHTML += `
+                        <tr>
+                            <td>${skill}</td>
+                            <td>${rating}</td>
+                        </tr>
+                    `;
+                });
+            
+                // Close the table tag
+                tableHTML += '</table>';
+            
+                // Return the generated table HTML
+                return tableHTML;
+            }
+
+            function availabilityRanking(text) {
+                text = text || null;
+                let rank = 0;
+                switch(text) {
+                    case 'green': 
+                        rank = 3;
+                        break;
+                    case 'yellow': 
+                        rank = 2;
+                        break;
+                    case 'red': 
+                        rank = 1;
+                        break;
+                    default: 
+                        rank = 0;
+                }
+                return rank;
+            }
+
+              /**
+             * 
+             * @param {array} employees -> this should be an array of employee objects
+             * @param {array} sortingCriteria - this should be an array of array sorting criteria in the format [param, asc/desc]
+             * @returns {array}
+             *
+             * const sortingCriteria = [
+             *   ['industryRating', 'desc'],
+             *   ['availabilityRanking', 'desc'],
+             *   ['stackRank', 'desc']
+             * ];
+             */
+            function customSortEmployees(employees, sortingCriteria) {
+                return employees.sort((a, b) => {
+                    for (const criteria of sortingCriteria) {
+                        const [field, order] = criteria;
+                        if (a[field] === b[field]) {
+                            continue;
+                        }
+                        if (order === 'desc') {
+                            return b[field] - a[field];
+                        } else {
+                            return a[field] - b[field];
+                        }
+                    }
+                    return 0; // All criteria are equal, keep original order
+                });
+            }
+
+            // Calculate the stack rank percentage for each employee
+            let rankedEmployees = Object.entries(aggregatedScores).map(([employee, data]) => {
+                const percentage = (data.weightedRating / maxRating) * 100;
+
+                return {
+                    employee            : employee,
+                    employeeId          : data.employeeId,
+                    manager             : data.manager,
+                    availability        : data.availability,
+                    availabilityRanking : availabilityRanking(data.availability),
+                    avail_notes         : data.avail_notes,
+                    avail_res           : data.avail_res,
+                    location            : data.location,
+                    region              : data.region,
+                    vertical            : data.vertical,
+                    tier                : data.tier,
+                    weightedRating      : data.weightedRating,
+                    skillsList          : createSkillsHtmlTable(data.skillsList),
+                    stackRank           : percentage.toFixed(1)                    // Format to 1 decimal place
+                };
+            });
+
+            var sortingCriteria = [
+                ['availabilityRanking', 'desc'],
+                ['stackRank', 'desc']
+            ];
+
+            if (sortKey && sortKey === 'sia') {
+                sortingCriteria = [
+                    ['stackRank', 'desc'],
+                    ['availabilityRanking', 'desc']
+                ];
+            }
+
+            // move sorting into statemnent below...
+            // const sortedRankedEmployees = rankedEmployees.sort((a, b) => b.weightedRating - a.weightedRating);
+
+            if (industryData && industryData.length > 0) {
+                const aggregatedIndustries = industryData.reduce((acc, [
+                    employeeId,
+                    employee,
+                    industry,
+                    subindustry,
+                    rating
+                ]) => {
+                    if (!acc[employee]) {
+                        acc[employee] = {
+                            employeeId: employeeId,
+                            industryRating: rating
+                        };
+                    }
+                    return acc;
+                }, {});
+
+                const cleanedIndustries = Object.entries(aggregatedIndustries).map(([employee, data]) => {
+                    return {
+                        employee       : employee,
+                        employeeId     : data.employeeId,
+                        industryRating : parseInt(data.industryRating)
+                    };
+                });
+
+                const cleanedIndustriesMap = cleanedIndustries.reduce((acc, obj) => {
+                    acc[obj.employeeId] = obj;
+                    return acc;
+                }, {});
+
+                rankedEmployees = rankedEmployees.map(objA => {
+                    const match = cleanedIndustriesMap[objA.employeeId];
+                    return match ? { ...objA, industryRating: match.industryRating } : objA;
+                });
+
+                sortingCriteria = [
+                    ['industryRating', 'desc'],
+                    ['availabilityRanking', 'desc'],
+                    ['stackRank', 'desc']
+                ];
+
+                if (sortKey && sortKey === 'ais') {
+                    sortingCriteria = [
+                        ['availabilityRanking', 'desc'],
+                        ['industryRating', 'desc'],
+                        ['stackRank', 'desc']
+                    ];
+                } else if (sortKey && sortKey === 'sia') {
+                    sortingCriteria = [
+                        ['stackRank', 'desc'],
+                        ['industryRating', 'desc'],
+                        ['availabilityRanking', 'desc']
+                    ];
+                }
+
+                rankedEmployees = rankedEmployees.map(employee => {
+                    if (employee.industryRating === undefined) {
+                        employee.industryRating = 0;
+                    }
+                    return employee;
+                });
+    
+                if (settings.removeIndustry === true) {
+                    // Filter out employees with empty or 0 industry ratings
+                    rankedEmployees = rankedEmployees.filter(employee => {
+                        return employee.industryRating !== undefined && employee.industryRating !== 0;
+                    });
+                }
+
+            }
+
+            const sortedFiltereEmployees = customSortEmployees(rankedEmployees, sortingCriteria);
+            return sortedFiltereEmployees;
+        }
+
+        function extractLocationString(str) {
+            // Define the regular expression
+            const regex = /^\w{2}-\w+/i;
+
+            // Use match() to extract the substring that matches the regex
+            const match = str.match(regex);
+
+            // If a match is found, return the first match (or the original location if no match)
+            return match ? match[0] : str;
+        }
+
+        function generateWeightedRating(rating) {
+            const weights = {
+                4: 8,
+                3: 5,
+                2: 2,
+                1: 1,
+                0: 0 // Assuming 0 maps to 0 as there's no weight provided
+            };
+
+            return weights[rating] || 0; // Default to 0 if the rating is not in the dictionary
+        }
+
+        function calculateRatingAverage(...numbers) {
+            if (numbers.length === 0) return 0; // Return 0 if no numbers are provided
+
+            const sum = numbers.reduce((acc, num) => acc + num, 0);
+            const average = sum / numbers.length;
+
+            return Math.round(average * 10) / 10; // Round to 1 decimal place
+        }
+
+        function calculateRatingStackRank(numbers) {
+            const max = Math.max(...numbers);
+            const min = Math.min(...numbers);
+
+            return numbers.map(num => {
+                const percentage = ((num - min) / (max - min)) * 100;
+                return parseFloat(percentage.toFixed(1)); // Round to 1 decimal place and convert back to a number
+            });
+        }
+
+        function generateRating(rating) {
+            if (!rating) { rating = 0; }
+            var maxRemain = 4 - rating;
+            var ratings = [];
+
+            for (var i = 0; i < rating; i++) {
+                ratings.push(`<i class="star icon active"></i>`);
+            }
+
+            for (var j = 0; j < maxRemain; j++) {
+                ratings.push(`<i class="star icon"></i>`)
+            }
+
+            var ratingsHtml = ratings.join('');
+            shout('Ratings HTML:', ratingsHtml);
+            return `<div class="ui yellow rating disabled">${ratingsHtml}</div>`;
+        }
+
+        function generateBodtOfWorkHtml(data, industryId) {
+            if (!data || data.length === 0) { return ''; }
+
+            shout("Data for HTML table:", data);
+
+            var html = [];
+
+            var tableHead = /* syntax: html */ `
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="single line">SC Name & Mgr</th>
+                            <th>Attributes</th>
+                            <th class="sorted descending">Availability Notes</th>
+                            ${(industryId) ? `<th class="single line sorted descending">Industry Fit</th>` : ``}
+                            <th>Skills Detail</th>
+                            <th class="single line sorted descending">Stack Rank</th>
+                        </tr>
+                    </thead>
+                    `
+                ;
+
+            // removed empty <tbody></tbody> tag at top
+            var tableFoot = /* syntax: html */ `
+                    <tfoot class="full-width">
+                        <tr class="right aligned">
+                            <th colspan="${(industryId) ? 8 : 7}" id="bodyofwork-footer">0 rows</th>
+                        </tr>
+                    </tfoot>
+                    `
+                ;
+
+            html.push(tableHead);
+
+            var len = data.length;
+            var i = 0;
+
+            for (i; i < len; i++) {
+                /**
+                 * {
+                 *   "employee"
+                 *   "employeeId"
+                 *   "availability"
+                 *   "avail_notes"
+                 *   "avail_res"
+                 *   "weightedRating"
+                 *   "skillsList"
+                 *   "stackRank"
+                 *   "industryRating"
+                 * }
+                 */
+
+                const row = /* syntax: html */ `
+                    <tr>
+                        <td class="center aligned tableSkillsAssign">
+                            <button class="ui mini primary icon button" data-eid="${data[i]["employeeId"]}" data-ename="${data[i]["employee"]}" data-tooltip="Assign user to request" data-position="right center">
+                                <i class="plus icon"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <a href="/app/common/custom/custrecordentry.nl?rectype=1572&id=${data[i]["employeeId"]}" target="_blank">${data[i]["employee"]}</a>
+                            <br/>
+                            <span style="font-style:italic;">${data[i]["manager"]}</span>
+                        <td>
+                            <div class="ui tiny basic labels">
+                                ${(data[i]["vertical"]) ? `<div class="ui label">${data[i]["vertical"]}</div>` : ''}
+                                ${(data[i]["tier"]) ? `<div class="ui label">${data[i]["tier"]}</div>` : ''}
+                                ${(data[i]["location"]) ? `<div class="ui label">${data[i]["location"]}</div>` : ''}
+                                ${(data[i]["region"]) ? `<div class="ui label">${data[i]["region"]}</div>` : ''}
+                            </div>
+                        </td>
+                        <td class="${(data[i]["availability"]) ? ` left ${data[i]["availability"]} marked` : ''}">
+                            ${data[i]["avail_notes"]}
+                            ${(data[i]["avail_res"]) ? `
+                                <div class="ui fitted divider"></div>
+                                <span class="ui red text">${data[i]["avail_res"]}</span>
+                                ` : ''
+                            }
+                            </h5>
+                        </td>
+                        ${(industryId) ?
+                        `<td>
+                            <div class="ui yellow disabled rating" data-icon="star" data-rating="${data[i]["industryRating"]}" data-max-rating="4"></div>
+                        </td>` : ``
+                        }
+                        <td>
+                            ${data[i]["skillsList"]}
+                        </td>
+                        <td class="center aligned">
+                            <div class="ui statistic">
+                                <div class="value">
+                                    ${data[i]["weightedRating"]}
+                                </div>
+                                <div class="label">
+                                    Point${(data[i]["weightedRating"] == 1) ? '' : 's'}
+                                </div>
+                            </div>
+                            <div class="ui tiny indicating progress" data-percent="${data[i]["stackRank"]}" id="progress-${data[i]["employeeId"]}">
+                                <div class="bar"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `
+                html.push(row);
+            }
+
+            html.push(tableFoot);
+            return html.join('');
+        }
+
+        async function getIndustryRating(industryId) {
+            try {
+                const payload = await new Promise((resolve, reject) => {
+                    try {
+                        const result = getBodyOfWorkIndustryData(industryId);
+                        resolve(result);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+
+                shout("Payload received!");
+
+                shout("Industry data:", payload);
+            } catch (error) {
+                shout("Payload error:", error);
+            }
+        }
+
+        /**
+         * Utility wrapper around setTimeout
+         * @param  {int}   ms       Sleep time in milliseconds
+         * @param  {func}  callback Callback function
+         */
+        function sleep(ms, callback) {
+            setTimeout(callback, ms);
+        }
+
+        function convertNameFormat(name) {
+            // Split the string by the comma and trim any extra spaces
+            let [lastname, firstname] = name.split(',').map(part => part.trim());
+
+            // Return the concatenated result in "Firstname Lastname" format
+            return `${firstname} ${lastname}`;
+        }
+
+        function updateBodyOfWorkTable(skills, industryId, tableFilters) {
+            // Add dimmer and loader
+            var dimmer = $('#tableSkillsLoader');
+            dimmer.addClass('active');
+
+            shout(`Table data raw >>>\nSkills: ${skills}\nIndustry: ${industryId}\nFilters: ${JSON.stringify(tableFilters)}`);
+
+            sleep(2000, function() {
+                var results = [];
+                const resultA = getBodyOfWorkSkillData(skills, tableFilters.skills);
+                const resultB = (industryId) ? getBodyOfWorkIndustryData(industryId, tableFilters.industry) : [];
+                results.push(resultA, resultB);
+
+                const skillsClean = consolidateSkillsData(results, tableFilters.sorting, tableFilters.operator);
+                var   html        = generateBodtOfWorkHtml(skillsClean, industryId);
+                var   rowTotals   = skillsClean.length || 0;
+                
+                // Add table styling
+                // $('#bodyofwork').css('min-height', '600px');
+
+                // Update table with row data
+                $('#bodyofwork').html(`${html}`);
+
+                // Update table footer
+                $('#bodyofwork-footer').html(`${rowTotals} row${(rowTotals == 1) ? '':'s'}`)
+
+                // Update progress bars
+                $('.ui.progress').progress();
+
+                // Update ratings
+                $('.ui.rating').rating();
+
+                // Update link events
+                $('.tableSkillsAssign button').click(
+                    function(event) {
+                        event.preventDefault();
+
+                        var eid   = $(this).data('eid');
+                        var ename = $(this).data('ename');
+
+                        const newValues = [{
+                            "name"                : convertNameFormat(ename),
+                            "value"               : parseInt(eid),
+                            "description"         : "Override: Added from skills search results table",
+                            "descriptionVertical" : true
+                        }];
+
+                        const scValues = getPeopleCache();
+
+                        $('#solutionconsultant').dropdown('change values', newValues);
+                        $('#solutionconsultant').dropdown('set selected', eid);
+
+                        shout('Add employee to dropdown:', `${ename} (${eid})`);
+                    }
+                );
+
+                sleep(1000, function() {
+                    // Remove dimmer and loader
+                    dimmer.removeClass('active');
+                });
+            });
+
+        }
+
+        /**
+        * +====================================================+
+        * |                                                    |
+        * |    ######     ###     ######  ##     ## ########   |
+        * |   ##    ##   ## ##   ##    ## ##     ## ##         |
+        * |   ##        ##   ##  ##       ##     ## ##         |
+        * |   ##       ##     ## ##       ######### ######     |
+        * |   ##       ######### ##       ##     ## ##         |
+        * |   ##    ## ##     ## ##    ## ##     ## ##         |
+        * |    ######  ##     ##  ######  ##     ## ########   |
+        * |                                                    |
+        * +====================================================+
+        */
+
+        function checkCache() {
+
+            var getCacheArray = GM_SuperValue.get(`${SCRIPT_CACHE_ID}`);
 
             if (getCacheArray && getCacheArray.length > 0) {
                 // cache found, check for timestamp
-                var getCacheTs = GM_SuperValue.get('people_cache_ts');
+                var getCacheTs = GM_SuperValue.get(`${SCRIPT_CACHE_ID}_ts`);
 
                 if (getCacheTs) {
                     // timestamp found, move to compare
                     var _currentTs = new Date().valueOf();
                     var _diffTs = _currentTs - getCacheTs;
 
-                    if (_diffTs >= CACHE_DURATION_MS) {
+                    /**
+                     * Cache is used to help increase performance by limiting
+                     * API calls for data that doens't change all that often.
+                     * We store the full HTML formatted dropdown values in the
+                     * cache and only refresh that data after a duration specified
+                     * in settings. For maths purposes, 3600000 ms = 1 hr.
+                     */
+
+                    const cacheDurationHrs = parseInt(settings.cacheRefreshDelay) || 6;
+                    const cacheDurationMs  = cacheDurationHrs * 3600000;
+
+                    if (_diffTs >= cacheDurationMs) {
                         // cache is older than threshold, refresh cache
                         refreshCache();
                     }
@@ -1243,15 +2818,30 @@
             var _peopleCache = scValues;
             var _peopleCacheTs = new Date().valueOf();
 
-            GM_SuperValue.set('people_cache', _peopleCache);
-            GM_SuperValue.set('people_cache_ts', _peopleCacheTs);
+            GM_SuperValue.set(`${SCRIPT_CACHE_ID}`, _peopleCache);
+            GM_SuperValue.set(`${SCRIPT_CACHE_ID}_ts`, _peopleCacheTs);
+            GM_SuperValue.set(`${SCRIPT_CACHE_ID}_raw`, people);
 
-            shout('People Cache Refreshed');
+            shout('People cache refreshed');
         }
+
+        /**
+        * +========================================================+
+        * |                                                        |
+        * |   ######## #### ######## ##       ########   ######    |
+        * |   ##        ##  ##       ##       ##     ## ##    ##   |
+        * |   ##        ##  ##       ##       ##     ## ##         |
+        * |   ######    ##  ######   ##       ##     ##  ######    |
+        * |   ##        ##  ##       ##       ##     ##       ##   |
+        * |   ##        ##  ##       ##       ##     ## ##    ##   |
+        * |   ##       #### ######## ######## ########   ######    |
+        * |                                                        |
+        * +========================================================+
+        */
 
         function getPeopleCache() {
             checkCache();
-            var _peopleCache = GM_SuperValue.get('people_cache');
+            var _peopleCache = GM_SuperValue.get(`${SCRIPT_CACHE_ID}`);
             return _peopleCache;
         }
 
@@ -1268,6 +2858,16 @@
         function setRequestDetails(text) {
             // prepend text to SC Request Details
             nlapiSetFieldValue('custrecord_screq_details', text + getRequestDetails());
+        }
+
+        function getLaunchpadQual() {
+            var text = nlapiGetFieldValue('custrecord_bdr_scr_qualifying_questions');
+            return text;
+        }
+
+        function getLaunchpadNotes() {
+            var text = nlapiGetFieldValue('custrecord_bdr_scr_sales_compass_notes');
+            return text;
         }
 
         function getStaffingNotes() {
@@ -1300,6 +2900,163 @@
             nlapiSetFieldValues('custrecord_sc_req_products', strArray);
         }
 
+        /**
+         * Convert SC Product selections to corresponding Skills Matrix entries.
+         * @param  {...[int]} idsArray   One or more SC Product internal IDs
+         * @return {[array]}             Array of Skills Matrix internal IDs
+         */
+        function getProductSkills(idsArray) {
+            var legend = {
+                "2":"591", // Advanced Electronic Bank Payments
+                "3":"827", // Advanced Manufacturing
+                "4":"529", // Advanced Order Management
+                "5":"957", // AP Automation
+                "6":"957", // Bill Capture
+                "7":"956", // CPQ
+                "8":"834", // Demand Planning
+                "9":"962", // Disaster Recovery
+                "10":"985", // Dunning
+                "53":"988", // E-Invoicing
+                "12":"982", // EPM FCC
+                "13":"993", // EPM FF
+                "14":"990", // EPM NR
+                "15":"983", // EPM NSAR
+                "16":"984", // EPM NSPB
+                "17":"991", // EPM PCM
+                "18":"992", // EPM Tax
+                "19":"964", // Field Service Management
+                "20":"825", // Financial Management
+                "21":"600", // Fixed Asset Management
+                "22":"572", // Incentive Compensation
+                "23":"826", // Inventory Management
+                "25":"934", // NS Connector
+                "26":"715", // NS POS
+                "27":"968", // NSAW
+                "28":"839", // OneWorld
+                "29":"840", // OpenAir
+                "31":"652", // Payroll
+                "32":"844", // Procurement
+                "33":"846", // Quality Management
+                "34":"929", // Rebate Management
+                "35":"979", // Revenue Management
+                "38":"708", // SuiteAnalytics Connect
+                "39":"710", // SuiteBilling
+                "40":"712", // SuiteCloud Plus
+                "41":"714", // SuiteCommerce
+                "42":"657", // SuiteCommerce Instore
+                "43":"716", // SuiteCommerce MyAccount
+                "44":"604", // SuitePeople
+                "45":"845", // SuiteProjects
+                "46":"974", // Tier
+                "48":"958", // WFM
+                "49":"738", // WIP and Routings
+                "50":"850", // WMS
+                "51":"739" // Work Orders and Assemblies
+            };
+            return idsArray.map(id => {
+                if (legend.hasOwnProperty(id)) {
+                    return legend[id];
+                } else {
+                    shout('getProductSkills: ID not found -> ', id);
+                }
+            });
+        }
+
+        function getRegion(state) {
+            if (state === '-N/A-') { return '-Review-'; }
+
+            const eastStates = ['ME', 'NH', 'VT', 'MA', 'CT', 'RI', 'NY', 'PA', 'NJ', 'DE', 'MD', 'DC', 'WV', 'VA', 'NC', 'SC', 'GA', 'FL'];
+            const centralStates = ['ND', 'SD', 'NE', 'KS', 'OK', 'TX', 'MN', 'IA', 'MO', 'AR', 'LA', 'WI', 'IL', 'MI', 'IN', 'OH', 'KY', 'TN', 'MS', 'AL'];
+            const westStates = ['AK', 'WA', 'OR', 'CA', 'HI', 'MT', 'ID', 'NV', 'WY', 'UT', 'AZ', 'CO', 'NM'];
+            const canWestStates = ['YT', 'BC', 'NT', 'AB', 'SK'];
+            const canEastStates = ['NU', 'MB', 'ON', 'QC', 'NB', 'PE', 'NL', 'NS'];
+
+            if (eastStates.includes(state)) {
+                return 'East';
+            } else if (centralStates.includes(state)) {
+                return 'Central';
+            } else if (westStates.includes(state)) {
+                return 'West';
+            } else if (canWestStates.includes(state)) {
+                return 'CAN-West';
+            } else if (canEastStates.includes(state)) {
+                return 'CAN-East';
+            } else {
+                return '-Review-';
+            }
+        }
+
+        function getRequestMetadata() {
+            var scr = {};
+
+            scr.company       = nlapiGetFieldText('custrecord_screq_opp_company') || '-N/A-';
+            scr.companyid     = nlapiGetFieldValue('custrecord_screq_opp_company') || null;
+
+            // move away from lookupfield and load directly from customer
+            let cRec          = nlapiLoadRecord('customer', scr.companyid);
+
+            scr.city          = cRec.getFieldValue('billcity') || '-N/A-';
+            scr.state         = cRec.getFieldValue('billstate') || '-N/A-';
+            scr.region        = getRegion(scr.state);
+
+            scr.opportunity   = nlapiGetFieldText('custrecord_screq_opportunity') || '-N/A-';
+            scr.opportunityid = nlapiGetFieldValue('custrecord_screq_opportunity') || null;
+
+            scr.salesrep      = nlapiGetFieldText('custrecord_screq_opp_salesreproster') || '-N/A-';
+            scr.salesmgr      = nlapiGetFieldText('custrecord_sales_rep_manager') || '-N/A-';
+
+            scr.industry      = nlapiGetFieldValue('custrecord_screq_zoominfo_industry') || '-N/A-';
+            scr.subindustry   = nlapiGetFieldValue('custrecord_screq_zoominfo_sub_industry') || '-N/A-';
+
+            scr.url           = nlapiGetFieldValue('custrecord_screq_customer_web_address') || '-N/A-';
+            scr.linkedin      = nlapiGetFieldValue('custrecord_screq_linkedin_url') || '-N/A-';
+
+            return scr;
+        }
+
+        function getRequestMetadataHtml() {
+            var data = getRequestMetadata() || null;
+
+            if (!data) { return ''; }
+
+            var html = /* syntax: html */ `
+            <div class="ui segment">
+                <div class="ui list">
+                    <div class="item">
+                        <div class="header">Opportunity</div>
+                        <a href="/app/accounting/transactions/opprtnty.nl?id=${data.opportunityid}" target="_blank">${data.opportunity}</a>
+                    </div>
+                    <div class="item">
+                        <div class="header">Company</div>
+                        <a href="/app/common/entity/custjob.nl?id=${data.companyid}" target="_blank">${data.company}</a>
+                    </div>
+                    <div class="item">
+                        <div class="header">Company Region</div>
+                        ${data.region}: ${data.city}, ${data.state}
+                    </div>
+                    <div class="item">
+                        <div class="header">Industry</div>
+                        ${data.industry}
+                    </div>
+                    <div class="item">
+                        <div class="header">Sub-Industry</div>
+                        ${data.subindustry}
+                    </div>
+                    <div class="item">
+                        <div class="header">Website</div>
+                        <a href="${data.url}" target="_blank">${data.url}</a>
+                    </div>
+                    <div class="item">
+                        <div class="header">LinkedIn</div>
+                        <a href="${data.linkedin}" target="_blank">${data.linkedin}</a>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            return html;
+        }
+
         function getRequestType() {
             var id = nlapiGetFieldValue('custrecord_screq_type');
             return id;
@@ -1307,6 +3064,11 @@
 
         function setRequestType() {
             nlapiSetFieldValue('custrecord_screq_type', 19, true);
+        }
+
+        function getIndustry() {
+            var id = nlapiGetFieldValue('custrecord_screq_industry');
+            return id;
         }
 
         function setIndustry(id) {
@@ -1380,6 +3142,11 @@
             nlapiSetFieldValue('custrecord_sc_complex_flag', 2);
         }
 
+        function getHashtags() {
+            // Get hashtags string
+            return nlapiGetFieldValue('custrecord_screq_hashtags') || '';
+        }
+
         function setHashtags(hashtags) {
             // Set hashtags to string
             nlapiSetFieldValue('custrecord_screq_hashtags', hashtags);
@@ -1448,14 +3215,14 @@
         function setRecordCancelled() {
             // button action - cancelled
             setStatusCancelled();
-            shout('Set status to Cancelled, and Assigned To to myself.')
+            // shout('Set status to Cancelled, and Assigned To to myself.')
         }
 
         function setRecordHold() {
             // button action - on hold
             setStatusHold();
             setAssigneeMe();
-            shout('Set status to On Hold, and Assigned To to myself.')
+            // shout('Set status to On Hold, and Assigned To to myself.')
         }
 
         function setRecordProductsEast() {
@@ -1463,7 +3230,7 @@
             setStatusRequested();
             setAssigneeLauren();
             setXvert();
-            shout('Set to xvr, and Assigned To Lauren.')
+            // shout('Set to xvr, and Assigned To Lauren.')
         }
 
         function setRecordProductsWest() {
@@ -1471,7 +3238,7 @@
             setStatusRequested();
             setAssigneeRobyn();
             setXvert();
-            shout('Set to xvr, and Assigned To Robyn.')
+            // shout('Set to xvr, and Assigned To Robyn.')
         }
 
         function setRecordGBEast() {
@@ -1479,7 +3246,7 @@
             setStatusRequested();
             setAssigneeKarl();
             setXvert();
-            shout('Set to xvr, and Assigned To Karl.')
+            // shout('Set to xvr, and Assigned To Karl.')
         }
 
         function setRecordGBWest() {
@@ -1487,7 +3254,7 @@
             setStatusRequested();
             setAssigneeRebecca();
             setXvert();
-            shout('Set to xvr, and Assigned To Rebecca.')
+            // shout('Set to xvr, and Assigned To Rebecca.')
         }
 
         function setRecordHT() {
@@ -1495,7 +3262,7 @@
             setStatusRequested();
             setAssigneeJeff();
             setXvert();
-            shout('Set to xvr, and Assigned to Jeff.');
+            // shout('Set to xvr, and Assigned to Jeff.');
         }
 
         function setRecordEPM() {
@@ -1503,7 +3270,7 @@
             setStatusRequested();
             setAssigneeJason();
             setXvert();
-            shout('Set to xvr, and Assigned to Jason.');
+            // shout('Set to xvr, and Assigned to Jason.');
         }
 
         function openRequestModal() {
@@ -1514,8 +3281,19 @@
         }
 
         /**
-         * DOM MANIPULATION
-         */
+        * +=============================================================================================+
+        * |                                                                                             |
+        * |   ########   #######  ##     ##    ######## ##     ## ######## ##    ## ########  ######    |
+        * |   ##     ## ##     ## ###   ###    ##       ##     ## ##       ###   ##    ##    ##    ##   |
+        * |   ##     ## ##     ## #### ####    ##       ##     ## ##       ####  ##    ##    ##         |
+        * |   ##     ## ##     ## ## ### ##    ######   ##     ## ######   ## ## ##    ##     ######    |
+        * |   ##     ## ##     ## ##     ##    ##        ##   ##  ##       ##  ####    ##          ##   |
+        * |   ##     ## ##     ## ##     ##    ##         ## ##   ##       ##   ###    ##    ##    ##   |
+        * |   ########   #######  ##     ##    ########    ###    ######## ##    ##    ##     ######    |
+        * |                                                                                             |
+        * +=============================================================================================+
+        */
+
         $("#_legend").click(
             function(event) {
                 event.preventDefault();
@@ -1587,6 +3365,55 @@
                 openRequestModal();
             }
         );
+        $('#_searchindustrylink').click(
+            function(event) {
+                event.preventDefault();
+                //
+            }
+        );
+
+        $('#productskillsearch').click(
+            function(event) {
+                event.preventDefault();
+
+                // only allow the first 4 products to be used for searching for peformance reasons
+                const products = $('#products').dropdown('get values').slice(0, 4);
+                if (!products || products.length === 0) { return false; }
+
+                const industryId   = $('#scmindustry').dropdown('get value') || null;
+                const skills       = getProductSkills(products);
+                const tableFilters = getTableFilters();
+                shout('Table filters:', tableFilters);
+                updateBodyOfWorkTable(skills, industryId, tableFilters);
+            }
+        );
+
+        // This doesn't appear to do anything different...
+        // $('#productskillsearch').click(
+        //     async function(event) {
+        //         event.preventDefault();
+
+        //         var dimmer = $('#tableSkillsLoader');
+        //         dimmer.removeClass('active'); // start with a fresh dimmer
+
+        //         const products = $('#products').dropdown('get values');
+        //         if (!products || products.length === 0) { return false; }
+
+        //         dimmer.addClass('active'); // add in a dimmer
+
+        //         const industryId = $('#scmindustry').dropdown('get value') || null;
+        //         const skills = getProductSkills(products);
+
+        //         try {
+        //             // Step 2: Call the async function
+        //             const result = await updateBodyOfWorkTable(skills, industryId);
+        //             dimmer.removeClass('active');
+        //         } catch (error) {
+        //             // Handle any errors and update the DOM accordingly
+        //             console.error('Error occurred:', error);
+        //         }
+        //     }
+        // );
 
         $('#scr-modal-request-form')
             .modal({
@@ -1608,6 +3435,14 @@
             .checkbox()
         ;
 
+        $('.ui.accordion')
+            .accordion()
+        ;
+
+        $('#bodyofwork')
+            .tablesort()
+        ;
+
         $('#_legend')
             .popup()
         ;
@@ -1618,9 +3453,23 @@
             })
         ;
 
-        $('#scmindustry')
+        $('.ui.search.selection.dropdown [id^=skillfilter]')
             .dropdown({
-                hideDividers: 'empty'
+                keepSearchTerm: true
+            })
+        ;
+
+        var industryFld = $('#scmindustry')
+            .dropdown({
+                hideDividers : 'empty',
+                clearable: true
+            })
+        ;
+
+        var industryFld = $('#scmindustry-popup')
+            .dropdown({
+                hideDividers: 'empty',
+                clearable: true
             })
         ;
 
@@ -1641,10 +3490,11 @@
             .dropdown({
                 clearable: true,
                 showOnFocus: true,
-                placeholder: 'Select product(s)',
+                placeholder: 'Select up to 4 products',
                 fullTextSearch: true,
                 name: 'products',
-                match: 'text'
+                match: 'text',
+                maxSelections: 4
             })
         ;
 
@@ -1695,18 +3545,35 @@
             })
         ;
 
-        // Get the form element
+        /**
+        * +=====================================================+
+        * |                                                     |
+        * |   ########  #######  ########  ##     ##  ######    |
+        * |   ##       ##     ## ##     ## ###   ### ##    ##   |
+        * |   ##       ##     ## ##     ## #### #### ##         |
+        * |   ######   ##     ## ########  ## ### ##  ######    |
+        * |   ##       ##     ## ##   ##   ##     ##       ##   |
+        * |   ##       ##     ## ##    ##  ##     ## ##    ##   |
+        * |   ##        #######  ##     ## ##     ##  ######    |
+        * |                                                     |
+        * +=====================================================+
+        */
+
+        // SCR Request Form
         var $scrRequestForm = $('#scr-modal-request-form')
             .form('set value', 'screquestdetails', getRequestDetails())
             .form('set value', 'salesmanagernotes', getSalesManagerNotes())
+            .form('set value', 'launchpadqual', getLaunchpadQual())
+            .form('set value', 'launchpadnotes', getLaunchpadNotes())
             .form('set value', 'dateneeded', getDateNeeded())
-            .form('set defaults', 'products', [])
             .form('set value', 'products', getProducts())
+            .form('set value', 'scmindustry', getIndustry())
+            .form('set value', 'hashtags', getHashtags())
             .form({
                 onSuccess: function(event, fields) {
                     event.preventDefault();
                     var allFields = $scrRequestForm.form('get values');
-                    shout("Form data: " + JSON.stringify(allFields));
+                    // shout("Form data: " + JSON.stringify(allFields));
 
                     // var dateNeeded = allfields.dateneeded;
                     var dateNeeded = $('#dateneeded').calendar('get date');
@@ -1741,7 +3608,6 @@
                         `Competitors: ${allFields.scmcompetitors}\n` +
                         `---\n` +
                         `Why We Win: \n` +
-                        `Why We Lose: \n` +
                         `Red Flags: ${allFields.scmredflags}\n` +
                         `---\n\n` +
                         `${myDateString} - Staffed deal ${initials}`
@@ -1752,14 +3618,15 @@
             })
         ;
 
-        // Get the form element
+        // SCR Notes Form
         var $scrNotesForm = $('#scr-modal-notes-form')
             .form({
                 onSuccess: function(event, fields) {
                     event.preventDefault();
                     var allFields = $scrNotesForm.form('get values');
-                    var staffingNotes = allFields.scmstaffingnotes;
-                    var needsEmerging = allFields.needsemg;
+                    var staffingNotes = allFields['scmstaffingnotes'];
+                    var needsEmerging = allFields['needsemg'];
+                    var scIndustry    = allFields['scmindustry-popup'];
 
                     var myDate = new Date();
                     var myDateString = ('0' + (myDate.getMonth()+1)).slice(-2) + '/' + ('0' + myDate.getDate()).slice(-2) + '/' + myDate.getFullYear();
@@ -1769,6 +3636,7 @@
                     setStaffingNotes(scmStaffingNotesPretty);
 
                     if (needsEmerging === "on") { setEmg(); }
+                    if (scIndustry) { setIndustry(scIndustry); }
                 }
             })
         ;
