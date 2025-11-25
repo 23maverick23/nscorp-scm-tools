@@ -28,8 +28,8 @@
 // @grant        GM.setValue
 // @grant        GM_registerMenuCommand
 // @run-at       document-idle
-// @downloadURL  https://github.com/23maverick23/nscorp-scm-tools/raw/beta-3.0.0/scr_mgr_assistant.js
-// @updateURL    https://github.com/23maverick23/nscorp-scm-tools/raw/beta-3.0.0/scr_mgr_assistant.js
+// @downloadURL  https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
+// @updateURL    https://github.com/23maverick23/nscorp-scm-tools/raw/main/scr_mgr_assistant.js
 // @supportURL   https://github.com/23maverick23/nscorp-scm-tools/issues
 // ==/UserScript==
 
@@ -1740,6 +1740,7 @@ var shout = (function () {
 				);
 			}
 
+			// TODO: fix this as needed for OML6 and OML7 based on hierarchy changes
 			if (settings.filterDirector) {
 				const dirName = settings.filterDirector;
 				switch (dirName) {
@@ -1749,7 +1750,7 @@ var shout = (function () {
 					case "lauren":
 					case "robyn":
 						filters.push(
-							new nlobjSearchFilter("custrecord_emproster_oml7", "custrecord_screq_assignee", "is", _ids[dirName]),
+							new nlobjSearchFilter("custrecord_emproster_oml6", "custrecord_screq_assignee", "is", _ids[dirName]),
 						);
 						break;
 					default:
@@ -1843,6 +1844,7 @@ var shout = (function () {
 				filters.push(new nlobjSearchFilter("custrecord_emproster_sales_tier", null, "is", tierId));
 			}
 
+			// TODO: fix this as needed for OML6 and OML7 based on hierarchy changes
 			if (settings.filterDirector) {
 				const dirName = settings.filterDirector;
 				switch (dirName) {
@@ -1851,7 +1853,7 @@ var shout = (function () {
 					case "rebecca":
 					case "lauren":
 					case "robyn":
-						filters.push(new nlobjSearchFilter("custrecord_emproster_oml7", null, "is", _ids[dirName]));
+						filters.push(new nlobjSearchFilter("custrecord_emproster_oml6", null, "is", _ids[dirName]));
 						break;
 					default:
 						shout(`Invalid director name provided: ${dirName}.`);
@@ -1974,6 +1976,7 @@ var shout = (function () {
 			}
 
 			// sc director
+			// // TODO: fix this as needed for OML6 and OML7 based on hierarchy changes
 			const filterDirector = $("#skillfilter-scdirector").dropdown("get value") || null;
 
 			switch (filterDirector) {
@@ -1984,7 +1987,7 @@ var shout = (function () {
 				case "robyn":
 					fSkills.push(
 						new nlobjSearchFilter(
-							"custrecord_emproster_oml7",
+							"custrecord_emproster_oml6",
 							"custrecord_ssm_skill_employee",
 							"is",
 							_ids[filterDirector],
@@ -1992,7 +1995,7 @@ var shout = (function () {
 					);
 					fIndustry.push(
 						new nlobjSearchFilter(
-							"custrecord_emproster_oml7",
+							"custrecord_emproster_oml6",
 							"custrecord_sr_ind_rating_employee",
 							"is",
 							_ids[filterDirector],
@@ -2131,7 +2134,7 @@ var shout = (function () {
 						case "robyn":
 							filters.push(
 								new nlobjSearchFilter(
-									"custrecord_emproster_oml7",
+									"custrecord_emproster_oml6",
 									"custrecord_sr_ind_rating_employee",
 									"is",
 									_ids[dirName],
@@ -2246,7 +2249,7 @@ var shout = (function () {
 						case "robyn":
 							filters.push(
 								new nlobjSearchFilter(
-									"custrecord_emproster_oml7",
+									"custrecord_emproster_oml6",
 									"custrecord_ssm_skill_employee",
 									"is",
 									_ids[dirName],
