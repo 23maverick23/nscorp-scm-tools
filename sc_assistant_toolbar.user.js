@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.10
+// @version      0.1.11
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -963,7 +963,7 @@
 		ui.managerNotes = createTextarea({
 			label: "SC Manager Notes",
 			placeholder: "Manager notes to set on Apply...",
-			minHeight: 92,
+			minHeight: 132,
 		});
 		ui.managerNotes.textarea.addEventListener("input", () => {
 			ui.managerNotes.textarea.dataset.generated = "0";
@@ -1014,13 +1014,17 @@
 		ui.settingsManagerNotesTemplate = createTextarea({
 			label: "SC Manager Notes Template",
 			placeholder: "{date} - Staffed deal {initials}",
-			minHeight: 84,
+			minHeight: 132,
 		});
 		ui.settingsApprovedHashtags = createTextarea({
 			label: "Approved Hashtags",
 			placeholder: "#emg, #priority",
 			minHeight: 84,
 		});
+		ui.settingsApprovedHashtags.root.appendChild(h("div", {
+			class: "scpa-field-help",
+			text: "Separate tags with commas or line breaks. Use slash for hierarchy, like #type/call; dashes stay in the tag name, like #follow-up.",
+		}));
 		ui.settingsEmployeeIds = createTextarea({
 			label: "Assignee Employee or Roster IDs",
 			placeholder: "Employee IDs first; roster record IDs are accepted as fallback",
@@ -1755,6 +1759,13 @@
 
 			.scpa-required {
 				color: var(--scpa-danger);
+			}
+
+			.scpa-field-help {
+				margin-top: -2px;
+				color: var(--scpa-muted);
+				font-size: 12px;
+				line-height: 1.4;
 			}
 
 			.scpa-input,
