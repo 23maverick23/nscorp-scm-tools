@@ -981,16 +981,24 @@
 
 			#scpa-toolbar,
 			#scpa-panel-slot {
-				--scpa-ns-teal: #326478;
-				--scpa-ns-teal-deep: #1d4050;
-				--scpa-ns-coral: #e88070;
-				--scpa-ns-redwood: #8a3d35;
-				--scpa-ns-ink: #181818;
-				--scpa-ns-muted: #66635f;
-				--scpa-ns-border: #dedbd5;
-				--scpa-ns-field: #f7f6f3;
-				--scpa-ns-line: #ece9e3;
-				--scpa-ns-surface-2: #f1f4f5;
+				--scpa-canvas: #eeebea;
+				--scpa-surface: #ffffff;
+				--scpa-frost: #f7f5f4;
+				--scpa-ink: #181717;
+				--scpa-text: #2e2d2d;
+				--scpa-muted: #575555;
+				--scpa-subtle: #706e6d;
+				--scpa-line: #d5d3d2;
+				--scpa-line-strong: #232222;
+				--scpa-action: #d04841;
+				--scpa-action-hover: #b63b35;
+				--scpa-success: #24523d;
+				--scpa-radius-control: 8px;
+				--scpa-radius-card: 16px;
+				--scpa-radius-pill: 9999px;
+				--scpa-shadow-sm: rgba(24, 23, 23, 0.02) 0 4px 8px 0;
+				--scpa-shadow-md: rgba(24, 23, 23, 0.16) 0 4px 16px 0;
+				--scpa-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 				--scpa-panel-width: 420px;
 			}
 
@@ -1002,26 +1010,25 @@
 				display: flex;
 				align-items: center;
 				gap: 10px;
-				min-height: 50px;
+				min-height: 56px;
 				margin: 8px 0 12px;
-				padding: 6px 14px;
-				background: #fff;
-				border: 1px solid var(--scpa-ns-border);
-				border-left: 4px solid var(--scpa-ns-teal);
-				border-bottom: 3px solid var(--scpa-ns-coral);
-				border-radius: 0;
-				color: var(--scpa-ns-ink);
-				font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-				box-shadow: 0 1px 2px rgba(29, 64, 80, 0.08);
+				padding: 8px 14px;
+				background: var(--scpa-surface);
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-card);
+				color: var(--scpa-ink);
+				font-family: var(--scpa-font);
+				line-height: 1.5;
+				box-shadow: var(--scpa-shadow-sm);
 			}
 
 			.scpa-toolbar-brand {
 				display: flex;
 				align-items: center;
-				font-size: 14px;
-				font-weight: 750;
+				font-size: 15px;
+				font-weight: 650;
 				white-space: nowrap;
-				color: var(--scpa-ns-teal-deep);
+				color: var(--scpa-ink);
 			}
 
 			.scpa-toolbar-spacer {
@@ -1042,35 +1049,37 @@
 				align-items: center;
 				justify-content: center;
 				gap: 7px;
-				height: 36px;
+				height: 40px;
 				padding: 0 14px;
-				border: 1px solid var(--scpa-ns-border);
-				border-radius: 0;
+				border: 1px solid var(--scpa-line-strong);
+				border-radius: var(--scpa-radius-control);
 				font-size: 13px;
-				font-weight: 700;
+				font-weight: 650;
 				cursor: pointer;
 				white-space: nowrap;
+				transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 			}
 
 			.scpa-btn-primary {
-				background: var(--scpa-ns-teal);
-				border-color: var(--scpa-ns-teal);
-				color: #fff;
+				background: var(--scpa-action);
+				border-color: var(--scpa-action);
+				color: var(--scpa-surface);
 			}
 
 			.scpa-btn-primary:hover {
-				background: var(--scpa-ns-teal-deep);
-				border-color: var(--scpa-ns-teal-deep);
+				background: var(--scpa-action-hover);
+				border-color: var(--scpa-action-hover);
+				box-shadow: var(--scpa-shadow-md);
 			}
 
 			.scpa-btn-ghost {
-				background: var(--scpa-ns-field);
-				color: var(--scpa-ns-teal-deep);
+				background: transparent;
+				color: var(--scpa-ink);
 			}
 
 			.scpa-btn-ghost:hover {
-				background: var(--scpa-ns-surface-2);
-				border-color: var(--scpa-ns-teal);
+				background: var(--scpa-frost);
+				box-shadow: var(--scpa-shadow-md);
 			}
 
 			.scpa-icon {
@@ -1098,9 +1107,9 @@
 				width: 0;
 				height: 100vh;
 				overflow: hidden;
-				background: #fff;
-				border-left: 0 solid var(--scpa-ns-line);
-				box-shadow: -16px 0 34px rgba(33, 63, 99, 0.16);
+				background: var(--scpa-surface);
+				border-left: 0 solid var(--scpa-line);
+				box-shadow: -8px 0 24px rgba(24, 23, 23, 0.14);
 				transition:
 					width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
 					border-left-width 0.01s 0.15s;
@@ -1123,9 +1132,10 @@
 				width: var(--scpa-panel-width);
 				height: 100vh;
 				max-height: 100vh;
-				background: #fff;
-				color: var(--scpa-ns-ink);
-				font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				background: var(--scpa-canvas);
+				color: var(--scpa-ink);
+				font-family: var(--scpa-font);
+				line-height: 1.5;
 			}
 
 			.scpa-panel[hidden] {
@@ -1135,16 +1145,17 @@
 			.scpa-panel-header {
 				display: flex;
 				align-items: center;
-				min-height: 48px;
-				padding: 0 16px;
-				background: var(--scpa-ns-teal-deep);
-				color: #fff;
+				min-height: 56px;
+				padding: 0 20px;
+				background: var(--scpa-surface);
+				border-bottom: 1px solid var(--scpa-line);
+				color: var(--scpa-ink);
 				flex: 0 0 auto;
 			}
 
 			.scpa-panel-title {
 				flex: 1;
-				font-size: 13px;
+				font-size: 15px;
 				font-weight: 650;
 			}
 
@@ -1156,25 +1167,25 @@
 				height: 28px;
 				padding: 0;
 				border: 0;
-				border-radius: 0;
+				border-radius: var(--scpa-radius-control);
 				background: transparent;
-				color: rgba(255, 255, 255, 0.72);
+				color: var(--scpa-muted);
 				cursor: pointer;
 			}
 
 			.scpa-close:hover {
-				background: rgba(255, 255, 255, 0.12);
-				color: #fff;
+				background: var(--scpa-frost);
+				color: var(--scpa-ink);
 			}
 
 			.scpa-panel-body {
 				display: flex;
 				flex: 1 1 auto;
 				flex-direction: column;
-				gap: 12px;
+				gap: 14px;
 				min-height: 0;
 				overflow-y: auto;
-				padding: 16px;
+				padding: 18px;
 			}
 
 			.scpa-panel-footer {
@@ -1182,11 +1193,11 @@
 				bottom: 0;
 				z-index: 35;
 				display: flex;
-				gap: 8px;
-				padding: 12px 16px;
-				border-top: 1px solid var(--scpa-ns-line);
-				background: #fff;
-				box-shadow: 0 -8px 18px rgba(33, 63, 99, 0.06);
+				gap: 10px;
+				padding: 14px 18px;
+				border-top: 1px solid var(--scpa-line);
+				background: var(--scpa-surface);
+				box-shadow: 0 -4px 16px rgba(24, 23, 23, 0.06);
 				flex: 0 0 auto;
 			}
 
@@ -1206,43 +1217,48 @@
 				display: inline-flex;
 				align-items: center;
 				gap: 4px;
-				color: #536173;
-				font-size: 10px;
-				font-weight: 750;
-				letter-spacing: 0.06em;
+				color: var(--scpa-muted);
+				font-size: 11px;
+				font-weight: 650;
+				letter-spacing: 0;
 				text-transform: uppercase;
 			}
 
 			.scpa-required {
-				color: var(--scpa-ns-redwood);
+				color: var(--scpa-action);
 			}
 
 			.scpa-input,
 			.scpa-textarea {
 				width: 100%;
-				border: 1px solid var(--scpa-ns-border);
-				border-radius: 0;
-				background: var(--scpa-ns-field);
-				color: var(--scpa-ns-ink);
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-control);
+				background: var(--scpa-surface);
+				color: var(--scpa-ink);
 				font-size: 13px;
 			}
 
+			.scpa-input::placeholder,
+			.scpa-textarea::placeholder {
+				color: var(--scpa-subtle);
+			}
+
 			.scpa-input {
-				height: 32px;
-				padding: 0 10px;
+				height: 38px;
+				padding: 0 12px;
 			}
 
 			.scpa-textarea {
-				padding: 9px 10px;
+				padding: 10px 12px;
 				resize: vertical;
 				line-height: 1.42;
 			}
 
 			.scpa-input:focus,
 			.scpa-textarea:focus {
-				border-color: var(--scpa-ns-teal);
-				background: #fff;
-				outline: 2px solid rgba(50, 100, 120, 0.14);
+				border-color: var(--scpa-action);
+				background: var(--scpa-surface);
+				outline: 3px solid rgba(208, 72, 65, 0.14);
 			}
 
 			.scpa-combo {
@@ -1250,7 +1266,7 @@
 			}
 
 			.scpa-combo-input {
-				padding-right: 34px;
+				padding-right: 44px;
 			}
 
 			.scpa-combo-button {
@@ -1260,19 +1276,19 @@
 				display: inline-flex;
 				align-items: center;
 				justify-content: center;
-				width: 30px;
-				height: 30px;
+				width: 36px;
+				height: 36px;
 				border: 0;
-				border-left: 1px solid var(--scpa-ns-line);
-				border-radius: 0;
+				border-left: 1px solid var(--scpa-line);
+				border-radius: 0 var(--scpa-radius-control) var(--scpa-radius-control) 0;
 				background: transparent;
-				color: #687589;
+				color: var(--scpa-subtle);
 				cursor: pointer;
 			}
 
 			.scpa-combo-button:hover {
-				background: var(--scpa-ns-surface-2);
-				color: var(--scpa-ns-teal-deep);
+				background: var(--scpa-frost);
+				color: var(--scpa-ink);
 			}
 
 			.scpa-menu {
@@ -1283,10 +1299,10 @@
 				z-index: 20;
 				max-height: 230px;
 				overflow-y: auto;
-				border: 1px solid var(--scpa-ns-border);
-				border-radius: 0;
-				background: #fff;
-				box-shadow: 0 14px 32px rgba(33, 63, 99, 0.18);
+				border: 1px solid var(--scpa-line);
+				border-radius: 12px;
+				background: var(--scpa-surface);
+				box-shadow: var(--scpa-shadow-md);
 			}
 
 			.scpa-menu[hidden] {
@@ -1297,23 +1313,23 @@
 				display: flex;
 				width: 100%;
 				align-items: center;
-				padding: 9px 10px;
+				padding: 10px 12px;
 				border: 0;
-				background: #fff;
-				color: var(--scpa-ns-ink);
+				background: var(--scpa-surface);
+				color: var(--scpa-ink);
 				font-size: 13px;
-				font-weight: 650;
+				font-weight: 550;
 				text-align: left;
 				cursor: pointer;
 			}
 
 			.scpa-menu-item:hover {
-				background: var(--scpa-ns-surface-2);
+				background: var(--scpa-frost);
 			}
 
 			.scpa-menu-empty {
 				padding: 9px 10px;
-				color: var(--scpa-ns-muted);
+				color: var(--scpa-muted);
 				font-size: 12px;
 			}
 
@@ -1322,7 +1338,7 @@
 				align-items: center;
 				gap: 9px;
 				min-height: 28px;
-				color: var(--scpa-ns-ink);
+				color: var(--scpa-text);
 				font-size: 13px;
 				cursor: pointer;
 			}
@@ -1335,10 +1351,10 @@
 
 			.scpa-toggle {
 				position: relative;
-				width: 34px;
-				height: 18px;
-				border-radius: 999px;
-				background: #9aa6b2;
+				width: 38px;
+				height: 22px;
+				border-radius: var(--scpa-radius-pill);
+				background: var(--scpa-line);
 				transition: background 0.16s ease;
 			}
 
@@ -1346,16 +1362,16 @@
 				position: absolute;
 				top: 2px;
 				left: 2px;
-				width: 14px;
-				height: 14px;
-				border-radius: 50%;
-				background: #fff;
-				box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+				width: 18px;
+				height: 18px;
+				border-radius: var(--scpa-radius-pill);
+				background: var(--scpa-surface);
+				box-shadow: 0 1px 2px rgba(24, 23, 23, 0.18);
 				transition: transform 0.16s ease;
 			}
 
 			.scpa-toggle-input:checked + .scpa-toggle {
-				background: var(--scpa-ns-teal);
+				background: var(--scpa-action);
 			}
 
 			.scpa-toggle-input:checked + .scpa-toggle .scpa-toggle-knob {
@@ -1363,21 +1379,21 @@
 			}
 
 			.scpa-toggle-text {
-				font-weight: 650;
+				font-weight: 550;
 			}
 
 			.scpa-divider {
 				height: 1px;
-				background: var(--scpa-ns-line);
-				margin: 2px 0;
+				background: var(--scpa-line);
+				margin: 4px 0;
 			}
 
 			.scpa-section-label {
 				margin-bottom: -4px;
-				color: #7b8796;
-				font-size: 10px;
-				font-weight: 750;
-				letter-spacing: 0.06em;
+				color: var(--scpa-subtle);
+				font-size: 11px;
+				font-weight: 650;
+				letter-spacing: 0;
 				text-transform: uppercase;
 			}
 
@@ -1387,12 +1403,13 @@
 				justify-content: center;
 				gap: 6px;
 				min-width: 80px;
-				height: 34px;
+				height: 40px;
 				padding: 0 16px;
-				border-radius: 0;
+				border-radius: var(--scpa-radius-control);
 				font-size: 13px;
-				font-weight: 700;
+				font-weight: 650;
 				cursor: pointer;
+				transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 			}
 
 			.scpa-panel-btn:disabled {
@@ -1401,29 +1418,31 @@
 			}
 
 			.scpa-secondary {
-				border: 1px solid var(--scpa-ns-border);
-				background: #fff;
-				color: var(--scpa-ns-teal-deep);
+				border: 1px solid var(--scpa-line-strong);
+				background: transparent;
+				color: var(--scpa-ink);
 			}
 
 			.scpa-secondary:hover {
-				background: var(--scpa-ns-surface-2);
+				background: var(--scpa-frost);
+				box-shadow: var(--scpa-shadow-md);
 			}
 
 			.scpa-primary-blue {
 				flex: 1;
 				border: 0;
-				background: var(--scpa-ns-teal);
-				color: #fff;
+				background: var(--scpa-action);
+				color: var(--scpa-surface);
 			}
 
 			.scpa-primary-blue:hover {
-				background: var(--scpa-ns-teal-deep);
+				background: var(--scpa-action-hover);
+				box-shadow: var(--scpa-shadow-md);
 			}
 
 			.scpa-danger-outline {
-				border-color: #d9aca6;
-				color: var(--scpa-ns-redwood);
+				border-color: rgba(208, 72, 65, 0.45);
+				color: var(--scpa-action);
 			}
 
 			.scpa-settings-actions {
@@ -1440,10 +1459,11 @@
 				display: flex;
 				flex-direction: column;
 				gap: 8px;
-				padding: 10px;
-				border: 1px solid var(--scpa-ns-line);
-				border-radius: 0;
-				background: var(--scpa-ns-field);
+				padding: 14px;
+				border: 1px solid rgba(213, 211, 210, 0.64);
+				border-radius: var(--scpa-radius-card);
+				background: var(--scpa-surface);
+				box-shadow: var(--scpa-shadow-sm);
 			}
 
 			.scpa-cache-heading,
@@ -1456,12 +1476,12 @@
 			}
 
 			.scpa-cache-detail {
-				color: var(--scpa-ns-muted);
+				color: var(--scpa-muted);
 			}
 
 			.scpa-cache-detail strong {
-				color: var(--scpa-ns-ink);
-				font-weight: 700;
+				color: var(--scpa-ink);
+				font-weight: 650;
 				text-align: right;
 			}
 
@@ -1469,37 +1489,37 @@
 				display: inline-flex;
 				align-items: center;
 				height: 20px;
-				padding: 0 7px;
-				border-radius: 0;
+				padding: 0 9px;
+				border-radius: var(--scpa-radius-pill);
 				font-size: 11px;
-				font-weight: 750;
+				font-weight: 650;
 			}
 
 			.scpa-cache-ready {
-				background: #eaf4f7;
-				color: var(--scpa-ns-teal-deep);
+				background: var(--scpa-frost);
+				color: var(--scpa-ink);
 			}
 
 			.scpa-cache-expired {
-				background: #fcebe8;
-				color: var(--scpa-ns-redwood);
+				background: #fdf1f0;
+				color: var(--scpa-action);
 			}
 
 			.scpa-cache-empty {
-				background: #ecebe8;
-				color: #6b6863;
+				background: var(--scpa-canvas);
+				color: var(--scpa-subtle);
 			}
 
 			.scpa-cache-count {
-				color: var(--scpa-ns-muted);
+				color: var(--scpa-muted);
 				font-size: 12px;
-				font-weight: 650;
+				font-weight: 550;
 			}
 
 			.scpa-status,
 			.scpa-loading {
 				padding: 9px 10px;
-				border-radius: 0;
+				border-radius: var(--scpa-radius-control);
 				font-size: 12px;
 				line-height: 1.4;
 			}
@@ -1510,34 +1530,34 @@
 			}
 
 			.scpa-status-info {
-				background: #eaf4f7;
-				color: var(--scpa-ns-teal-deep);
+				background: var(--scpa-frost);
+				color: var(--scpa-text);
 			}
 
 			.scpa-status-success {
-				background: #e8f4ee;
-				color: #24523d;
+				background: #f1f7f3;
+				color: var(--scpa-success);
 			}
 
 			.scpa-status-error {
-				background: #fcebe8;
-				color: var(--scpa-ns-redwood);
+				background: #fdf1f0;
+				color: var(--scpa-action);
 			}
 
 			.scpa-loading {
 				display: flex;
 				align-items: center;
 				gap: 9px;
-				background: #eaf4f7;
-				color: var(--scpa-ns-teal-deep);
+				background: var(--scpa-frost);
+				color: var(--scpa-text);
 				font-weight: 650;
 			}
 
 			.scpa-spinner {
 				width: 16px;
 				height: 16px;
-				border: 2px solid rgba(50, 100, 120, 0.22);
-				border-top-color: var(--scpa-ns-teal);
+				border: 2px solid rgba(24, 23, 23, 0.16);
+				border-top-color: var(--scpa-action);
 				border-radius: 50%;
 				animation: scpa-spin 0.85s linear infinite;
 			}
@@ -1565,7 +1585,7 @@
 
 				#scpa-panel-slot.scpa-open {
 					width: min(var(--scpa-panel-width), 100vw);
-					box-shadow: -16px 0 34px rgba(33, 63, 99, 0.18);
+					box-shadow: -8px 0 24px rgba(24, 23, 23, 0.14);
 				}
 
 				.scpa-panel {
