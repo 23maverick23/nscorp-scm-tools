@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.3
+// @version      0.1.4
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -1475,7 +1475,7 @@
 			.scpa-panel-header {
 				display: flex;
 				align-items: center;
-				min-height: 56px;
+				min-height: 64px;
 				padding: 0 20px;
 				background: var(--scpa-surface);
 				border-bottom: 1px solid var(--scpa-line);
