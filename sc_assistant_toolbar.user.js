@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.0
+// @version      0.1.1
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
