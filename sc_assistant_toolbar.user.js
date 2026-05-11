@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.7
+// @version      0.1.8
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -46,7 +46,6 @@
 		requestStatus: "custrecord_screq_status",
 		assignee: "custrecord_screq_assignee",
 		lead: "custrecord_screq_assigned_lead",
-		dateNeeded: "custrecord_screq_date_sc_needed",
 		details: "custrecord_screq_details",
 		managerNotes: "custrecord_screq_scmanager_notes",
 		hashtags: "custrecord_screq_hashtags",
@@ -276,26 +275,6 @@
 		return [String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0"), date.getFullYear()].join("/");
 	}
 
-	function inputDateToNetSuite(inputValue) {
-		if (!inputValue) {
-			return "";
-		}
-		const [year, month, day] = inputValue.split("-").map((part) => parseInt(part, 10));
-		if (!year || !month || !day) {
-			return "";
-		}
-		return `${month}/${day}/${year}`;
-	}
-
-	function netSuiteDateToInput(value) {
-		const match = String(value || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-		if (!match) {
-			return "";
-		}
-		const [, month, day, year] = match;
-		return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-	}
-
 	function extractShortLocation(location) {
 		const match = String(location || "").match(/(^\w+-\w+)/);
 		return match ? match[1] : "";
@@ -516,17 +495,18 @@
 		};
 	}
 
-	function createComboBox({ label, required = false, placeholder = "", options = [], onSelect = null }) {
+	function createComboBox({ label, required = false, placeholder = "", options = [], onSelect = null, onClear = null }) {
 		const field = createFieldShell({ label, required });
 		const wrapper = h("div", { class: "scpa-combo" });
 		const input = h("input", { class: "scpa-input scpa-combo-input", type: "text", placeholder, autocomplete: "off" });
 		const hidden = h("input", { type: "hidden" });
+		const clearButton = h("button", { class: "scpa-combo-clear", type: "button", "aria-label": `Clear ${label}`, hidden: true }, [icon("x")]);
 		const button = h("button", { class: "scpa-combo-button", type: "button", "aria-label": `Open ${label}` }, [icon("chevron")]);
 		const menu = h("div", { class: "scpa-menu", hidden: true });
 		let currentOptions = options.slice();
 		let selected = null;
 
-		wrapper.append(input, hidden, button, menu);
+		wrapper.append(input, hidden, clearButton, button, menu);
 		field.root.appendChild(wrapper);
 
 		function open() {
@@ -536,6 +516,10 @@
 
 		function close() {
 			menu.hidden = true;
+		}
+
+		function updateClearState() {
+			clearButton.hidden = !input.value && !hidden.value;
 		}
 
 		function render(query = "") {
@@ -568,18 +552,41 @@
 			input.value = option.label;
 			input.setAttribute("data-selected-label", option.label);
 			input.dataset.employeeRecordId = option.employeeRecordId || "";
+			updateClearState();
 			close();
 			if (onSelect && !silent) {
 				onSelect(option);
 			}
 		}
 
+		function clearSelection({ focus = false, silent = false } = {}) {
+			hidden.value = "";
+			selected = null;
+			input.value = "";
+			input.removeAttribute("data-selected-label");
+			delete input.dataset.employeeRecordId;
+			updateClearState();
+			render("");
+			if (onClear && !silent) {
+				onClear();
+			}
+			if (focus) {
+				input.focus();
+				open();
+			}
+		}
+
 		input.addEventListener("focus", open);
 		input.addEventListener("input", () => {
+			const hadSelection = Boolean(hidden.value || selected);
 			hidden.value = "";
 			selected = null;
 			input.removeAttribute("data-selected-label");
 			delete input.dataset.employeeRecordId;
+			updateClearState();
+			if (hadSelection && onClear) {
+				onClear();
+			}
 			open();
 		});
 		input.addEventListener("keydown", (event) => {
@@ -602,6 +609,10 @@
 				close();
 			}
 		});
+		clearButton.addEventListener("mousedown", (event) => {
+			event.preventDefault();
+		});
+		clearButton.addEventListener("click", () => clearSelection({ focus: true }));
 		document.addEventListener("mousedown", (event) => {
 			if (!wrapper.contains(event.target)) {
 				close();
@@ -618,8 +629,7 @@
 			setLoading(message) {
 				input.placeholder = message;
 				currentOptions = [];
-				hidden.value = "";
-				selected = null;
+				clearSelection({ silent: true });
 				render("");
 			},
 			setOptions(nextOptions) {
@@ -639,11 +649,9 @@
 				if (match) {
 					selectOption(match, true);
 				} else {
+					clearSelection({ silent: true });
 					hidden.value = value || "";
-					selected = null;
-					input.value = "";
-					input.removeAttribute("data-selected-label");
-					delete input.dataset.employeeRecordId;
+					updateClearState();
 				}
 			},
 		};
@@ -883,9 +891,9 @@
 				setGeneratedAddendum(option.name || option.label);
 				setGeneratedManagerNotes(option.name || option.label);
 			},
+			onClear: clearGeneratedAssigneeText,
 		});
 		ui.lead = createToggle({ label: "Lead SC", checked: false });
-		ui.dateNeeded = createTextInput({ label: "Date SC Needed", required: true, type: "date" });
 		ui.detailsAdd = createTextarea({
 			label: "SC Request Details Addendum",
 			placeholder: "Text to prepend to the beginning of the SC Request Details on Save...",
@@ -912,7 +920,6 @@
 			panelStatus(),
 			ui.assignee.root,
 			ui.lead.root,
-			ui.dateNeeded.root,
 			ui.detailsAdd.root,
 			h("div", { class: "scpa-divider" }),
 			h("div", { class: "scpa-section-label", text: "Manager Fields" }),
@@ -921,7 +928,7 @@
 		]);
 
 		const footer = h("div", { class: "scpa-panel-footer" }, [
-			h("button", { class: "scpa-panel-btn scpa-secondary", type: "button", onclick: closePanels }, ["Cancel"]),
+			h("button", { class: "scpa-panel-btn scpa-cancel", type: "button", onclick: closePanels }, ["Cancel"]),
 			h("button", { class: "scpa-panel-btn scpa-secondary", type: "button", onclick: () => saveQuickAssign(false) }, ["Apply"]),
 			h("button", { class: "scpa-panel-btn scpa-primary-blue", type: "button", onclick: () => saveQuickAssign(true) }, ["Apply and Save"]),
 		]);
@@ -1046,7 +1053,6 @@
 
 	function hydrateAssignPanel(runId) {
 		setPanelStatus(assignPanel, "");
-		ui.dateNeeded.setValue(netSuiteDateToInput(nsGet(FIELDS.dateNeeded)));
 		ui.lead.setValue(nsGet(FIELDS.lead, "F") === "T");
 		ui.hashtags.setOptions(getApprovedHashtags());
 		ui.hashtags.setValue(nsGet(FIELDS.hashtags));
@@ -1197,6 +1203,15 @@
 		ui.detailsAdd.textarea.dataset.generated = "1";
 	}
 
+	function clearGeneratedAssigneeText() {
+		if (ui.detailsAdd && ui.detailsAdd.textarea.dataset.generated === "1") {
+			ui.detailsAdd.setValue("");
+		}
+		if (ui.managerNotes && ui.managerNotes.textarea.dataset.generated === "1") {
+			ui.managerNotes.setValue("");
+		}
+	}
+
 	function hydrateManagerNotesField() {
 		const currentNotes = nsGet(FIELDS.managerNotes);
 		if (currentNotes) {
@@ -1239,7 +1254,6 @@
 	function validateQuickAssign(values) {
 		const missing = [];
 		if (!values.assigneeId) missing.push("Assign To");
-		if (!values.dateNeeded) missing.push("Date SC Needed");
 		return missing;
 	}
 
@@ -1248,7 +1262,6 @@
 			assigneeId: ui.assignee.getValue(),
 			assigneeName: ui.assignee.getLabel(),
 			isLead: ui.lead.getValue(),
-			dateNeeded: inputDateToNetSuite(ui.dateNeeded.getValue()),
 			detailsAdd: ui.detailsAdd.getValue(),
 			managerNotes: ui.managerNotes.getValue(),
 			hashtags: ui.hashtags.getValue(),
@@ -1262,7 +1275,6 @@
 
 		try {
 			nsSet(FIELDS.requestStatus, STATUS.staffed);
-			nsSet(FIELDS.dateNeeded, values.dateNeeded);
 			nsSet(FIELDS.assignee, values.assigneeId);
 			nsSet(FIELDS.lead, values.isLead ? "T" : "F");
 			nsSet(FIELDS.deliverable, 53);
@@ -1362,6 +1374,7 @@
 				--scpa-action-soft: #eaf4f7;
 				--scpa-success: #326478;
 				--scpa-danger: #7a241a;
+				--scpa-danger-soft: #fbe7e3;
 				--scpa-next-gradient: linear-gradient(90deg, #376980 0%, #997faa 24%, #ffa5a5 48%, #d4976c 72%, #975d6b 100%);
 				--scpa-c-blue-50: #e8f4f8;
 				--scpa-c-blue-600: #7898a8;
@@ -1428,6 +1441,7 @@
 			.scpa-toolbar-btn,
 			.scpa-panel-btn,
 			.scpa-close,
+			.scpa-combo-clear,
 			.scpa-combo-button,
 			.scpa-menu-item {
 				font: inherit;
@@ -1679,26 +1693,41 @@
 			}
 
 			.scpa-combo-input {
-				padding-right: 44px;
+				padding-right: 76px;
 			}
 
+			.scpa-combo-clear,
 			.scpa-combo-button {
 				position: absolute;
 				top: 1px;
-				right: 1px;
 				display: inline-flex;
 				align-items: center;
 				justify-content: center;
-				width: 36px;
 				height: 36px;
 				border: 0;
-				border-left: 1px solid var(--scpa-line);
-				border-radius: 0 var(--scpa-radius-control) var(--scpa-radius-control) 0;
 				background: transparent;
 				color: var(--scpa-subtle);
 				cursor: pointer;
 			}
 
+			.scpa-combo-clear {
+				right: 37px;
+				width: 32px;
+				border-left: 1px solid var(--scpa-line-soft);
+			}
+
+			.scpa-combo-clear[hidden] {
+				display: none;
+			}
+
+			.scpa-combo-button {
+				right: 1px;
+				width: 36px;
+				border-left: 1px solid var(--scpa-line);
+				border-radius: 0 var(--scpa-radius-control) var(--scpa-radius-control) 0;
+			}
+
+			.scpa-combo-clear:hover,
 			.scpa-combo-button:hover {
 				background: var(--scpa-action-soft);
 				color: var(--scpa-action);
@@ -1999,6 +2028,19 @@
 				background: var(--scpa-action-soft);
 				border-color: var(--scpa-action);
 				color: var(--scpa-action);
+				box-shadow: none;
+			}
+
+			.scpa-cancel {
+				border: 1px solid rgba(122, 36, 26, 0.5);
+				background: var(--scpa-surface);
+				color: var(--scpa-danger);
+			}
+
+			.scpa-cancel:hover {
+				background: var(--scpa-danger-soft);
+				border-color: var(--scpa-danger);
+				color: var(--scpa-danger);
 				box-shadow: none;
 			}
 
