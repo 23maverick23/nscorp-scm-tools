@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.4
+// @version      0.1.5
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -244,8 +244,27 @@
 		const clean = String(value || "")
 			.trim()
 			.replace(/^#+/, "")
-			.replace(/[^\w-]/g, "");
+			.replace(/[^\w/-]/g, "")
+			.replace(/\/+/g, "/")
+			.replace(/^\/|\/$/g, "");
 		return clean ? `#${clean}` : "";
+	}
+
+	function hashtagParts(tag) {
+		const parts = String(tag || "")
+			.replace(/^#/, "")
+			.split("/")
+			.filter(Boolean);
+		if (parts.length > 1) {
+			return { group: parts[0], label: parts.slice(1).join("/") };
+		}
+		return { group: "tags", label: parts[0] || String(tag || "").replace(/^#/, "") };
+	}
+
+	function titleCase(value) {
+		return String(value || "")
+			.replace(/[-_]+/g, " ")
+			.replace(/\b\w/g, (letter) => letter.toUpperCase());
 	}
 
 	function uniqueValues(values) {
@@ -633,99 +652,119 @@
 	function createHashtagPicker({ label, placeholder = "" }) {
 		const field = createFieldShell({ label });
 		const wrapper = h("div", { class: "scpa-tag-picker" });
-		const tagsNode = h("div", { class: "scpa-tags" });
-		const input = h("input", { class: "scpa-tag-input", type: "text", placeholder, autocomplete: "off" });
-		const menu = h("div", { class: "scpa-menu scpa-hashtag-menu", hidden: true });
+		const input = h("input", { class: "scpa-input scpa-tag-custom-input", type: "text", placeholder, autocomplete: "off" });
+		const groupsNode = h("div", { class: "scpa-tag-groups" });
+		const customNode = h("div", { class: "scpa-custom-tags", hidden: true });
 		let selected = [];
 		let options = getApprovedHashtags();
 
-		tagsNode.appendChild(input);
-		wrapper.append(tagsNode, menu);
+		wrapper.append(input, groupsNode, customNode);
 		field.root.appendChild(wrapper);
-
-		function open() {
-			renderMenu(input.value);
-			menu.hidden = false;
-		}
-
-		function close() {
-			menu.hidden = true;
-		}
 
 		function addTag(value) {
 			const tag = normalizeHashtag(value);
 			if (!tag || selected.includes(tag)) {
 				input.value = "";
-				renderTags();
-				renderMenu("");
+				render();
 				return;
 			}
 			selected.push(tag);
 			input.value = "";
-			renderTags();
-			renderMenu("");
+			render();
 		}
 
 		function removeTag(tag) {
 			selected = selected.filter((value) => value !== tag);
-			renderTags();
-			renderMenu(input.value);
+			render();
 		}
 
-		function renderTags() {
-			tagsNode.replaceChildren();
-			selected.forEach((tag) => {
-				const remove = h("button", { class: "scpa-tag-remove", type: "button", "aria-label": `Remove ${tag}` }, ["x"]);
-				remove.addEventListener("click", () => removeTag(tag));
-				tagsNode.appendChild(h("span", { class: "scpa-tag" }, [h("span", { text: tag }), remove]));
-			});
-			tagsNode.appendChild(input);
-		}
-
-		function renderMenu(query = "") {
-			const needle = query.trim().toLowerCase();
-			menu.replaceChildren();
-			const matches = options.filter((tag) => !selected.includes(tag) && (!needle || tag.toLowerCase().includes(needle))).slice(0, 80);
-			const override = normalizeHashtag(query);
-			if (override && !selected.includes(override) && !matches.includes(override)) {
-				matches.unshift(override);
+		function toggleTag(tag) {
+			if (selected.includes(tag)) {
+				removeTag(tag);
+			} else {
+				addTag(tag);
 			}
-			if (!matches.length) {
-				menu.appendChild(h("div", { class: "scpa-menu-empty", text: options.length ? "No matching hashtags" : "Type a hashtag and press Enter" }));
+		}
+
+		function renderGroups() {
+			groupsNode.replaceChildren();
+			if (!options.length) {
+				groupsNode.appendChild(h("div", { class: "scpa-tag-help", text: "Add approved hashtags in Settings, or type a custom hashtag above." }));
 				return;
 			}
-			matches.forEach((tag) => {
-				const item = h("button", { class: "scpa-menu-item", type: "button" }, [h("span", { class: "scpa-menu-label", text: tag })]);
-				item.addEventListener("mousedown", (event) => {
-					event.preventDefault();
-					addTag(tag);
-					input.focus();
+
+			const grouped = new Map();
+			options.forEach((tag) => {
+				const parts = hashtagParts(tag);
+				if (!grouped.has(parts.group)) {
+					grouped.set(parts.group, []);
+				}
+				grouped.get(parts.group).push({ tag, label: parts.label });
+			});
+
+			grouped.forEach((items, group) => {
+				const row = h("div", { class: "scpa-tag-toggle-row" });
+				items.forEach(({ tag, label }) => {
+					const isActive = selected.includes(tag);
+					const button = h(
+						"button",
+						{
+							class: `scpa-tag-toggle${isActive ? " scpa-tag-toggle-active" : ""}`,
+							type: "button",
+							"aria-pressed": isActive ? "true" : "false",
+							"data-tag": tag,
+						},
+						[titleCase(label)],
+					);
+					button.addEventListener("click", () => toggleTag(tag));
+					row.appendChild(button);
 				});
-				menu.appendChild(item);
+
+				groupsNode.appendChild(
+					h("div", { class: "scpa-tag-group" }, [
+						h("div", { class: "scpa-tag-group-title", text: `#${group}` }),
+						row,
+					]),
+				);
 			});
 		}
 
-		input.addEventListener("focus", open);
-		input.addEventListener("input", () => open());
-		input.addEventListener("keydown", (event) => {
-			if (event.key === "Escape") {
-				close();
+		function renderCustomTags() {
+			customNode.replaceChildren();
+			const approved = new Set(options);
+			const customTags = selected.filter((tag) => !approved.has(tag));
+			customNode.hidden = !customTags.length;
+			if (!customTags.length) {
+				return;
 			}
+			customNode.appendChild(h("div", { class: "scpa-custom-tags-title", text: "Custom" }));
+			const row = h("div", { class: "scpa-custom-tag-row" });
+			customTags.forEach((tag) => {
+				const remove = h("button", { class: "scpa-tag-remove", type: "button", "aria-label": `Remove ${tag}` }, ["x"]);
+				remove.addEventListener("click", () => removeTag(tag));
+				row.appendChild(h("span", { class: "scpa-tag" }, [h("span", { text: tag }), remove]));
+			});
+			customNode.appendChild(row);
+		}
+
+		function render() {
+			renderGroups();
+			renderCustomTags();
+		}
+
+		input.addEventListener("keydown", (event) => {
 			if (event.key === "Enter" || event.key === ",") {
 				event.preventDefault();
 				addTag(input.value);
 			}
-			if (event.key === "Backspace" && !input.value && selected.length) {
-				removeTag(selected[selected.length - 1]);
-			}
 		});
-		document.addEventListener("mousedown", (event) => {
-			if (!wrapper.contains(event.target)) {
-				close();
+		input.addEventListener("blur", () => {
+			if (input.value.trim()) {
+				addTag(input.value);
 			}
 		});
 
-		renderTags();
+		render();
 
 		return {
 			root: field.root,
@@ -733,12 +772,11 @@
 			getValue: () => selected.join(","),
 			setValue(value) {
 				selected = parseHashtags(value);
-				renderTags();
-				renderMenu(input.value);
+				render();
 			},
 			setOptions(nextOptions) {
 				options = parseHashtags(nextOptions.join(","));
-				renderMenu(input.value);
+				render();
 			},
 		};
 	}
@@ -1309,29 +1347,33 @@
 
 			#scpa-toolbar,
 			#scpa-panel-slot {
-				--scpa-canvas: #eeebea;
+				--scpa-canvas: #fafaf5;
 				--scpa-surface: #ffffff;
-				--scpa-frost: #f7f5f4;
-				--scpa-ink: #181717;
-				--scpa-text: #2e2d2d;
-				--scpa-muted: #575555;
-				--scpa-subtle: #706e6d;
-				--scpa-line: #d5d3d2;
-				--scpa-line-strong: #232222;
-				--scpa-action: #d04841;
-				--scpa-action-hover: #b63b35;
-				--scpa-success: #24523d;
-				--scpa-radius-control: 8px;
-				--scpa-radius-card: 16px;
+				--scpa-frost: #e9e9e7;
+				--scpa-ink: #121212;
+				--scpa-text: #4d4d4d;
+				--scpa-muted: #686767;
+				--scpa-subtle: #7d7d7d;
+				--scpa-line: #cecdca;
+				--scpa-line-strong: #121212;
+				--scpa-action: #e8aa42;
+				--scpa-action-hover: #d9972f;
+				--scpa-success: #214c70;
+				--scpa-danger: #eb6c00;
+				--scpa-radius-control: 6px;
+				--scpa-radius-card: 12px;
 				--scpa-radius-pill: 9999px;
-				--scpa-shadow-sm: rgba(24, 23, 23, 0.02) 0 4px 8px 0;
-				--scpa-shadow-md: rgba(24, 23, 23, 0.16) 0 4px 16px 0;
+				--scpa-shadow-sm: rgba(18, 18, 18, 0.06) 0 2px 8px 0;
+				--scpa-shadow-md: rgba(18, 18, 18, 0.12) 0 6px 18px 0;
 				--scpa-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 				--scpa-panel-width: 420px;
 			}
 
 			body.scpa-panel-open {
 				--scpa-panel-width: 420px;
+				overflow-x: hidden;
+				padding-right: var(--scpa-panel-width) !important;
+				transition: padding-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 			}
 
 			#scpa-toolbar {
@@ -1341,7 +1383,7 @@
 				min-height: 56px;
 				margin: 8px 0 12px;
 				padding: 8px 14px;
-				background: var(--scpa-surface);
+				background: var(--scpa-canvas);
 				border: 1px solid var(--scpa-line);
 				border-right: 0;
 				border-left: 0;
@@ -1380,9 +1422,9 @@
 				justify-content: center;
 				gap: 7px;
 				height: 40px;
-				padding: 0 14px;
+				padding: 0 16px;
 				border: 1px solid var(--scpa-line-strong);
-				border-radius: var(--scpa-radius-control);
+				border-radius: var(--scpa-radius-pill);
 				font-size: 13px;
 				font-weight: 650;
 				cursor: pointer;
@@ -1391,15 +1433,15 @@
 			}
 
 			.scpa-btn-primary {
-				background: var(--scpa-action);
+				background: transparent;
 				border-color: var(--scpa-action);
-				color: var(--scpa-surface);
+				color: var(--scpa-ink);
 			}
 
 			.scpa-btn-primary:hover {
-				background: var(--scpa-action-hover);
-				border-color: var(--scpa-action-hover);
-				box-shadow: var(--scpa-shadow-md);
+				background: var(--scpa-action);
+				border-color: var(--scpa-action);
+				box-shadow: none;
 			}
 
 			.scpa-btn-ghost {
@@ -1409,7 +1451,7 @@
 
 			.scpa-btn-ghost:hover {
 				background: var(--scpa-frost);
-				box-shadow: var(--scpa-shadow-md);
+				box-shadow: none;
 			}
 
 			.scpa-icon {
@@ -1437,9 +1479,9 @@
 				width: 0;
 				height: 100vh;
 				overflow: hidden;
-				background: var(--scpa-surface);
+				background: var(--scpa-canvas);
 				border-left: 0 solid var(--scpa-line);
-				box-shadow: -8px 0 24px rgba(24, 23, 23, 0.14);
+				box-shadow: -8px 0 18px rgba(18, 18, 18, 0.1);
 				transition:
 					width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
 					border-left-width 0.01s 0.15s;
@@ -1451,9 +1493,12 @@
 				overflow: visible;
 			}
 
-			body.scpa-panel-open #pageContainer {
-				margin-right: var(--scpa-panel-width);
-				transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			body.scpa-panel-open #pageContainer,
+			body.scpa-panel-open #div__body {
+				width: calc(100vw - var(--scpa-panel-width)) !important;
+				max-width: calc(100vw - var(--scpa-panel-width)) !important;
+				margin-right: 0 !important;
+				transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 			}
 
 			.scpa-panel {
@@ -1477,7 +1522,7 @@
 				align-items: center;
 				min-height: 64px;
 				padding: 0 20px;
-				background: var(--scpa-surface);
+				background: var(--scpa-canvas);
 				border-bottom: 1px solid var(--scpa-line);
 				color: var(--scpa-ink);
 				flex: 0 0 auto;
@@ -1526,8 +1571,8 @@
 				gap: 10px;
 				padding: 14px 18px;
 				border-top: 1px solid var(--scpa-line);
-				background: var(--scpa-surface);
-				box-shadow: 0 -4px 16px rgba(24, 23, 23, 0.06);
+				background: var(--scpa-canvas);
+				box-shadow: 0 -4px 12px rgba(18, 18, 18, 0.06);
 				flex: 0 0 auto;
 			}
 
@@ -1555,7 +1600,7 @@
 			}
 
 			.scpa-required {
-				color: var(--scpa-action);
+				color: var(--scpa-danger);
 			}
 
 			.scpa-input,
@@ -1588,7 +1633,7 @@
 			.scpa-textarea:focus {
 				border-color: var(--scpa-action);
 				background: var(--scpa-surface);
-				outline: 3px solid rgba(208, 72, 65, 0.14);
+				outline: 3px solid rgba(232, 170, 66, 0.22);
 			}
 
 			.scpa-combo {
@@ -1623,26 +1668,94 @@
 
 			.scpa-tag-picker {
 				position: relative;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
 			}
 
-			.scpa-tags {
+			.scpa-tag-groups {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
+
+			.scpa-tag-group {
+				padding: 9px;
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-card);
+				background: var(--scpa-surface);
+			}
+
+			.scpa-tag-group-title,
+			.scpa-custom-tags-title {
+				margin-bottom: 7px;
+				color: var(--scpa-subtle);
+				font-size: 10px;
+				font-weight: 700;
+				letter-spacing: 0;
+				text-transform: uppercase;
+			}
+
+			.scpa-tag-toggle-row,
+			.scpa-custom-tag-row {
 				display: flex;
 				flex-wrap: wrap;
 				align-items: center;
 				gap: 6px;
-				min-height: 38px;
-				padding: 6px 8px;
+			}
+
+			.scpa-tag-toggle {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 30px;
+				padding: 0 12px;
 				border: 1px solid var(--scpa-line);
-				border-radius: var(--scpa-radius-control);
+				border-radius: var(--scpa-radius-pill);
 				background: var(--scpa-surface);
+				color: var(--scpa-ink);
+				font-size: 12px;
+				font-weight: 650;
+				cursor: pointer;
+				transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+			}
+
+			.scpa-tag-toggle:hover {
+				border-color: var(--scpa-action);
+			}
+
+			.scpa-tag-toggle-active {
+				border-color: var(--scpa-action);
+				background: var(--scpa-action);
+				color: var(--scpa-ink);
+			}
+
+			.scpa-tag-help {
+				padding: 9px 10px;
+				border: 1px dashed var(--scpa-line);
+				border-radius: var(--scpa-radius-card);
+				background: var(--scpa-surface);
+				color: var(--scpa-muted);
+				font-size: 12px;
+			}
+
+			.scpa-custom-tags {
+				padding: 9px;
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-card);
+				background: var(--scpa-surface);
+			}
+
+			.scpa-custom-tags[hidden] {
+				display: none;
 			}
 
 			.scpa-tag {
 				display: inline-flex;
 				align-items: center;
 				gap: 5px;
-				height: 24px;
-				padding: 0 8px;
+				min-height: 28px;
+				padding: 0 9px;
 				border: 1px solid var(--scpa-line);
 				border-radius: var(--scpa-radius-pill);
 				background: var(--scpa-frost);
@@ -1670,31 +1783,6 @@
 			.scpa-tag-remove:hover {
 				background: var(--scpa-line);
 				color: var(--scpa-ink);
-			}
-
-			.scpa-tag-input {
-				flex: 1 1 120px;
-				min-width: 96px;
-				height: 24px;
-				border: 0;
-				background: transparent;
-				color: var(--scpa-ink);
-				font: inherit;
-				font-size: 13px;
-				outline: 0;
-			}
-
-			.scpa-tag-input::placeholder {
-				color: var(--scpa-subtle);
-			}
-
-			.scpa-tags:focus-within {
-				border-color: var(--scpa-action);
-				outline: 3px solid rgba(208, 72, 65, 0.14);
-			}
-
-			.scpa-hashtag-menu {
-				top: calc(100% + 4px);
 			}
 
 			.scpa-menu {
@@ -1811,7 +1899,7 @@
 				min-width: 80px;
 				height: 40px;
 				padding: 0 16px;
-				border-radius: var(--scpa-radius-control);
+				border-radius: var(--scpa-radius-pill);
 				font-size: 13px;
 				font-weight: 650;
 				cursor: pointer;
@@ -1831,24 +1919,25 @@
 
 			.scpa-secondary:hover {
 				background: var(--scpa-frost);
-				box-shadow: var(--scpa-shadow-md);
+				box-shadow: none;
 			}
 
 			.scpa-primary-blue {
 				flex: 1;
-				border: 0;
-				background: var(--scpa-action);
+				border: 1px solid var(--scpa-ink);
+				background: var(--scpa-ink);
 				color: var(--scpa-surface);
 			}
 
 			.scpa-primary-blue:hover {
-				background: var(--scpa-action-hover);
-				box-shadow: var(--scpa-shadow-md);
+				background: #2b2b2b;
+				border-color: #2b2b2b;
+				box-shadow: none;
 			}
 
 			.scpa-danger-outline {
-				border-color: rgba(208, 72, 65, 0.45);
-				color: var(--scpa-action);
+				border-color: rgba(235, 108, 0, 0.45);
+				color: var(--scpa-danger);
 			}
 
 			.scpa-settings-actions {
@@ -1866,7 +1955,7 @@
 				flex-direction: column;
 				gap: 8px;
 				padding: 14px;
-				border: 1px solid rgba(213, 211, 210, 0.64);
+				border: 1px solid var(--scpa-line);
 				border-radius: var(--scpa-radius-card);
 				background: var(--scpa-surface);
 				box-shadow: var(--scpa-shadow-sm);
@@ -1907,8 +1996,8 @@
 			}
 
 			.scpa-cache-expired {
-				background: #fdf1f0;
-				color: var(--scpa-action);
+				background: #fff4e8;
+				color: var(--scpa-danger);
 			}
 
 			.scpa-cache-empty {
@@ -1946,8 +2035,8 @@
 			}
 
 			.scpa-status-error {
-				background: #fdf1f0;
-				color: var(--scpa-action);
+				background: #fff4e8;
+				color: var(--scpa-danger);
 			}
 
 			.scpa-loading {
@@ -1962,7 +2051,7 @@
 			.scpa-spinner {
 				width: 16px;
 				height: 16px;
-				border: 2px solid rgba(24, 23, 23, 0.16);
+				border: 2px solid rgba(18, 18, 18, 0.16);
 				border-top-color: var(--scpa-action);
 				border-radius: 50%;
 				animation: scpa-spin 0.85s linear infinite;
@@ -1980,8 +2069,15 @@
 			}
 
 			@media (max-width: 860px) {
-				body.scpa-panel-open #pageContainer {
-					margin-right: 0;
+				body.scpa-panel-open {
+					padding-right: 0 !important;
+				}
+
+				body.scpa-panel-open #pageContainer,
+				body.scpa-panel-open #div__body {
+					width: auto !important;
+					max-width: none !important;
+					margin-right: 0 !important;
 				}
 
 				#scpa-toolbar {
@@ -1991,7 +2087,7 @@
 
 				#scpa-panel-slot.scpa-open {
 					width: min(var(--scpa-panel-width), 100vw);
-					box-shadow: -8px 0 24px rgba(24, 23, 23, 0.14);
+					box-shadow: -8px 0 18px rgba(18, 18, 18, 0.1);
 				}
 
 				.scpa-panel {
