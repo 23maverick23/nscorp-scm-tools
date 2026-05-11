@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.1
+// @version      0.1.3
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -35,8 +35,12 @@
 	const CACHE_IDS_KEY = "sc_assistant_toolbar_people_cache_ids_v1";
 	const EMPLOYEE_IDS_KEY = "sc_assistant_toolbar_employee_ids_v1";
 	const INITIALS_KEY = "sc_assistant_toolbar_initials_v1";
+	const MANAGER_NOTES_TEMPLATE_KEY = "sc_assistant_toolbar_manager_notes_template_v1";
+	const APPROVED_HASHTAGS_KEY = "sc_assistant_toolbar_approved_hashtags_v1";
 	const DEFAULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 	const DEFAULT_EMPLOYEE_IDS = [];
+	const DEFAULT_MANAGER_NOTES_TEMPLATE = "{date} - Staffed deal {initials}";
+	const DEFAULT_APPROVED_HASHTAGS = "#emg";
 
 	const FIELDS = {
 		requestStatus: "custrecord_screq_status",
@@ -45,6 +49,7 @@
 		dateNeeded: "custrecord_screq_date_sc_needed",
 		details: "custrecord_screq_details",
 		managerNotes: "custrecord_screq_scmanager_notes",
+		hashtags: "custrecord_screq_hashtags",
 		deliverable: "custrecord_screq_engmnt_deliverable",
 		complexFlag: "custrecord_sc_complex_flag",
 	};
@@ -195,6 +200,19 @@
 		return getStoredValue(INITIALS_KEY, "[SC Mgr]");
 	}
 
+	function getManagerNotesTemplate() {
+		return String(getStoredValue(MANAGER_NOTES_TEMPLATE_KEY, DEFAULT_MANAGER_NOTES_TEMPLATE) || "");
+	}
+
+	function getApprovedHashtagsText() {
+		const stored = getStoredValue(APPROVED_HASHTAGS_KEY, DEFAULT_APPROVED_HASHTAGS);
+		return Array.isArray(stored) ? stored.join(", ") : String(stored || "");
+	}
+
+	function getApprovedHashtags() {
+		return parseHashtags(getApprovedHashtagsText());
+	}
+
 	function getEmployeeIdsText() {
 		const stored = getStoredValue(EMPLOYEE_IDS_KEY, DEFAULT_EMPLOYEE_IDS.join(", "));
 		return Array.isArray(stored) ? stored.join(", ") : String(stored || "");
@@ -211,6 +229,23 @@
 				.map((item) => item.trim())
 				.filter(Boolean),
 		);
+	}
+
+	function parseHashtags(value) {
+		return uniqueValues(
+			String(value || "")
+				.split(/[\s,;]+/)
+				.map(normalizeHashtag)
+				.filter(Boolean),
+		);
+	}
+
+	function normalizeHashtag(value) {
+		const clean = String(value || "")
+			.trim()
+			.replace(/^#+/, "")
+			.replace(/[^\w-]/g, "");
+		return clean ? `#${clean}` : "";
 	}
 
 	function uniqueValues(values) {
@@ -324,39 +359,83 @@
 		return peoplePromise;
 	}
 
-	function fetchConfiguredRosterPeople(employeeIds) {
-		const filters = [
-			new nlobjSearchFilter("custrecord_emproster_emp", null, "anyof", employeeIds),
+	function fetchConfiguredRosterPeople(configuredIds) {
+		const ids = uniqueValues(configuredIds.map((id) => String(id)));
+		const order = new Map(ids.map((id, index) => [id, index]));
+		const peopleByRosterId = new Map();
+		const matchedEmployeeIds = new Set();
+
+		searchRosterPeople([
+			new nlobjSearchFilter("custrecord_emproster_emp", null, "anyof", ids),
+			...activeRosterFilters(),
+		]).forEach((person) => {
+			peopleByRosterId.set(person.value, person);
+			if (person.employeeRecordId) {
+				matchedEmployeeIds.add(person.employeeRecordId);
+			}
+		});
+
+		const unresolvedIds = ids.filter((id) => !matchedEmployeeIds.has(id));
+		if (unresolvedIds.length) {
+			searchRosterPeople([
+				new nlobjSearchFilter("internalid", null, "anyof", unresolvedIds),
+				...activeRosterFilters(),
+			]).forEach((person) => {
+				if (!peopleByRosterId.has(person.value)) {
+					peopleByRosterId.set(person.value, person);
+				}
+			});
+		}
+
+		return Array.from(peopleByRosterId.values()).sort((a, b) => {
+			const orderDiff = configuredRosterOrder(a, order) - configuredRosterOrder(b, order);
+			return orderDiff || a.label.localeCompare(b.label);
+		});
+	}
+
+	function activeRosterFilters() {
+		return [
 			new nlobjSearchFilter("custrecord_emproster_rosterstatus", null, "is", 1),
 			new nlobjSearchFilter("custrecord_emproster_eminactive", null, "is", "F"),
-			new nlobjSearchFilter("custrecord_emproster_sales_qb", null, "is", 25),
-			new nlobjSearchFilter("custrecord_emproster_rdept", null, "is", 482),
 		];
+	}
+
+	function searchRosterPeople(filters) {
 		const columns = [
 			makeColumn("internalid"),
+			makeColumn("name"),
 			makeColumn("custrecord_emproster_emp"),
 			makeColumn("custrecord_emproster_firstname"),
 			makeColumn("custrecord_emproster_lastname"),
 			makeColumn("custrecord_emproster_olocation"),
 		];
 		return nsSearch("customrecord_emproster", filters, columns)
-			.map((result) => {
-				const employeeRecordId = String(result.getValue("custrecord_emproster_emp") || "");
-				const first = result.getValue("custrecord_emproster_firstname") || "";
-				const last = result.getValue("custrecord_emproster_lastname") || "";
-				const employeeText = result.getText("custrecord_emproster_emp") || "";
-				const name = [first, last].filter(Boolean).join(" ").trim() || normalizeEmployeeName(employeeText);
-				const location = extractShortLocation(result.getText("custrecord_emproster_olocation") || "");
-				return {
-					value: String(result.getValue("internalid") || result.getId() || ""),
-					employeeRecordId,
-					label: location ? `${name} (${location})` : name,
-					name,
-					location,
-				};
-			})
+			.map(mapRosterPerson)
 			.filter((person) => person.value && person.label)
 			.sort((a, b) => a.label.localeCompare(b.label));
+	}
+
+	function mapRosterPerson(result) {
+		const employeeRecordId = String(result.getValue("custrecord_emproster_emp") || "");
+		const first = result.getValue("custrecord_emproster_firstname") || "";
+		const last = result.getValue("custrecord_emproster_lastname") || "";
+		const employeeText = result.getText("custrecord_emproster_emp") || "";
+		const rosterName = result.getValue("name") || "";
+		const name = [first, last].filter(Boolean).join(" ").trim() || normalizeEmployeeName(employeeText) || rosterName;
+		const location = extractShortLocation(result.getText("custrecord_emproster_olocation") || "");
+		return {
+			value: String(result.getValue("internalid") || result.getId() || ""),
+			employeeRecordId,
+			label: location ? `${name} (${location})` : name,
+			name,
+			location,
+		};
+	}
+
+	function configuredRosterOrder(person, order) {
+		const employeeOrder = order.has(person.employeeRecordId) ? order.get(person.employeeRecordId) : Number.POSITIVE_INFINITY;
+		const rosterOrder = order.has(person.value) ? order.get(person.value) : Number.POSITIVE_INFINITY;
+		return Math.min(employeeOrder, rosterOrder);
 	}
 
 	function createFieldShell({ label, required = false, className = "" }) {
@@ -551,6 +630,119 @@
 		};
 	}
 
+	function createHashtagPicker({ label, placeholder = "" }) {
+		const field = createFieldShell({ label });
+		const wrapper = h("div", { class: "scpa-tag-picker" });
+		const tagsNode = h("div", { class: "scpa-tags" });
+		const input = h("input", { class: "scpa-tag-input", type: "text", placeholder, autocomplete: "off" });
+		const menu = h("div", { class: "scpa-menu scpa-hashtag-menu", hidden: true });
+		let selected = [];
+		let options = getApprovedHashtags();
+
+		tagsNode.appendChild(input);
+		wrapper.append(tagsNode, menu);
+		field.root.appendChild(wrapper);
+
+		function open() {
+			renderMenu(input.value);
+			menu.hidden = false;
+		}
+
+		function close() {
+			menu.hidden = true;
+		}
+
+		function addTag(value) {
+			const tag = normalizeHashtag(value);
+			if (!tag || selected.includes(tag)) {
+				input.value = "";
+				renderTags();
+				renderMenu("");
+				return;
+			}
+			selected.push(tag);
+			input.value = "";
+			renderTags();
+			renderMenu("");
+		}
+
+		function removeTag(tag) {
+			selected = selected.filter((value) => value !== tag);
+			renderTags();
+			renderMenu(input.value);
+		}
+
+		function renderTags() {
+			tagsNode.replaceChildren();
+			selected.forEach((tag) => {
+				const remove = h("button", { class: "scpa-tag-remove", type: "button", "aria-label": `Remove ${tag}` }, ["x"]);
+				remove.addEventListener("click", () => removeTag(tag));
+				tagsNode.appendChild(h("span", { class: "scpa-tag" }, [h("span", { text: tag }), remove]));
+			});
+			tagsNode.appendChild(input);
+		}
+
+		function renderMenu(query = "") {
+			const needle = query.trim().toLowerCase();
+			menu.replaceChildren();
+			const matches = options.filter((tag) => !selected.includes(tag) && (!needle || tag.toLowerCase().includes(needle))).slice(0, 80);
+			const override = normalizeHashtag(query);
+			if (override && !selected.includes(override) && !matches.includes(override)) {
+				matches.unshift(override);
+			}
+			if (!matches.length) {
+				menu.appendChild(h("div", { class: "scpa-menu-empty", text: options.length ? "No matching hashtags" : "Type a hashtag and press Enter" }));
+				return;
+			}
+			matches.forEach((tag) => {
+				const item = h("button", { class: "scpa-menu-item", type: "button" }, [h("span", { class: "scpa-menu-label", text: tag })]);
+				item.addEventListener("mousedown", (event) => {
+					event.preventDefault();
+					addTag(tag);
+					input.focus();
+				});
+				menu.appendChild(item);
+			});
+		}
+
+		input.addEventListener("focus", open);
+		input.addEventListener("input", () => open());
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "Escape") {
+				close();
+			}
+			if (event.key === "Enter" || event.key === ",") {
+				event.preventDefault();
+				addTag(input.value);
+			}
+			if (event.key === "Backspace" && !input.value && selected.length) {
+				removeTag(selected[selected.length - 1]);
+			}
+		});
+		document.addEventListener("mousedown", (event) => {
+			if (!wrapper.contains(event.target)) {
+				close();
+			}
+		});
+
+		renderTags();
+
+		return {
+			root: field.root,
+			input,
+			getValue: () => selected.join(","),
+			setValue(value) {
+				selected = parseHashtags(value);
+				renderTags();
+				renderMenu(input.value);
+			},
+			setOptions(nextOptions) {
+				options = parseHashtags(nextOptions.join(","));
+				renderMenu(input.value);
+			},
+		};
+	}
+
 	function buildToolbar() {
 		if (document.getElementById("scpa-toolbar")) {
 			return;
@@ -650,11 +842,11 @@
 			required: true,
 			placeholder: "Choose an SC",
 			onSelect: (option) => {
-				defaultSelectedAssigneeLead();
 				setGeneratedAddendum(option.name || option.label);
+				setGeneratedManagerNotes(option.name || option.label);
 			},
 		});
-		ui.lead = createToggle({ label: "Lead SC", checked: true });
+		ui.lead = createToggle({ label: "Lead SC", checked: false });
 		ui.dateNeeded = createTextInput({ label: "Date SC Needed", required: true, type: "date" });
 		ui.detailsAdd = createTextarea({
 			label: "SC Request Details Addendum",
@@ -664,6 +856,18 @@
 		ui.detailsAdd.textarea.addEventListener("input", () => {
 			ui.detailsAdd.textarea.dataset.generated = "0";
 		});
+		ui.managerNotes = createTextarea({
+			label: "SC Manager Notes",
+			placeholder: "Manager notes to set on Apply...",
+			minHeight: 92,
+		});
+		ui.managerNotes.textarea.addEventListener("input", () => {
+			ui.managerNotes.textarea.dataset.generated = "0";
+		});
+		ui.hashtags = createHashtagPicker({
+			label: "Hashtags",
+			placeholder: "Add hashtag",
+		});
 
 		const body = h("div", { class: "scpa-panel-body" }, [
 			panelLoading(),
@@ -672,11 +876,16 @@
 			ui.lead.root,
 			ui.dateNeeded.root,
 			ui.detailsAdd.root,
+			h("div", { class: "scpa-divider" }),
+			h("div", { class: "scpa-section-label", text: "Manager Fields" }),
+			ui.managerNotes.root,
+			ui.hashtags.root,
 		]);
 
 		const footer = h("div", { class: "scpa-panel-footer" }, [
 			h("button", { class: "scpa-panel-btn scpa-secondary", type: "button", onclick: closePanels }, ["Cancel"]),
-			h("button", { class: "scpa-panel-btn scpa-primary-blue", type: "button", onclick: saveQuickAssign }, ["Apply"]),
+			h("button", { class: "scpa-panel-btn scpa-secondary", type: "button", onclick: () => saveQuickAssign(false) }, ["Apply"]),
+			h("button", { class: "scpa-panel-btn scpa-primary-blue", type: "button", onclick: () => saveQuickAssign(true) }, ["Apply and Save"]),
 		]);
 
 		panel.append(panelHeader("SC Quick Assign"), body, footer);
@@ -694,9 +903,19 @@
 			label: "Comment Signature",
 			placeholder: "[SC Mgr]",
 		});
+		ui.settingsManagerNotesTemplate = createTextarea({
+			label: "SC Manager Notes Template",
+			placeholder: "{date} - Staffed deal {initials}",
+			minHeight: 84,
+		});
+		ui.settingsApprovedHashtags = createTextarea({
+			label: "Approved Hashtags",
+			placeholder: "#emg, #priority",
+			minHeight: 84,
+		});
 		ui.settingsEmployeeIds = createTextarea({
-			label: "Assignee Employee IDs",
-			placeholder: "12345, 67890, 24680",
+			label: "Assignee Employee or Roster IDs",
+			placeholder: "Employee IDs first; roster record IDs are accepted as fallback",
 			minHeight: 124,
 		});
 		ui.settingsCacheSummary = h("div", { class: "scpa-cache-summary" });
@@ -706,6 +925,8 @@
 			panelStatus(),
 			h("div", { class: "scpa-section-label", text: "Defaults" }),
 			ui.settingsInitials.root,
+			ui.settingsManagerNotesTemplate.root,
+			ui.settingsApprovedHashtags.root,
 			ui.settingsEmployeeIds.root,
 			h("div", { class: "scpa-divider" }),
 			h("div", { class: "scpa-section-label", text: "Roster Cache" }),
@@ -788,7 +1009,9 @@
 	function hydrateAssignPanel(runId) {
 		setPanelStatus(assignPanel, "");
 		ui.dateNeeded.setValue(netSuiteDateToInput(nsGet(FIELDS.dateNeeded)));
-		ui.lead.setValue(nsGet(FIELDS.lead, "T") !== "F");
+		ui.lead.setValue(nsGet(FIELDS.lead, "F") === "T");
+		ui.hashtags.setOptions(getApprovedHashtags());
+		ui.hashtags.setValue(nsGet(FIELDS.hashtags));
 		ui.assignee.setLoading("Loading configured assignees...");
 
 		loadPeople()
@@ -801,12 +1024,13 @@
 				if (currentAssignee) {
 					ui.assignee.setValue(currentAssignee);
 				}
+				hydrateManagerNotesField();
 				ui.assignee.input.placeholder = people.length ? "Choose an SC" : "Add employee IDs in Settings";
 				setPanelLoading(assignPanel, false);
 				if (!getConfiguredEmployeeIds().length) {
 					setPanelStatus(assignPanel, "Add employee IDs in Settings to populate the assignee dropdown.", "info");
 				} else if (!people.length) {
-					setPanelStatus(assignPanel, "No active SC roster records found for the configured employee IDs.", "error");
+					setPanelStatus(assignPanel, "No active SC roster records found for the configured employee or roster IDs.", "error");
 				}
 			})
 			.catch((error) => {
@@ -824,6 +1048,8 @@
 			return;
 		}
 		ui.settingsInitials.setValue(getInitials());
+		ui.settingsManagerNotesTemplate.setValue(getManagerNotesTemplate());
+		ui.settingsApprovedHashtags.setValue(getApprovedHashtagsText());
 		ui.settingsEmployeeIds.setValue(getEmployeeIdsText());
 		updateSettingsCacheSummary();
 		setPanelLoading(settingsPanel, false);
@@ -856,26 +1082,61 @@
 		);
 	}
 
-	function saveSettings() {
+	function persistSettingsInputs() {
 		const initials = ui.settingsInitials.getValue() || "[SC Mgr]";
+		const managerNotesTemplate = ui.settingsManagerNotesTemplate.getValue() || DEFAULT_MANAGER_NOTES_TEMPLATE;
+		const approvedHashtagsText = parseHashtags(ui.settingsApprovedHashtags.getValue()).join(", ");
 		const employeeIdsText = parseEmployeeIds(ui.settingsEmployeeIds.getValue()).join(", ");
 
 		setStoredValue(INITIALS_KEY, initials);
+		setStoredValue(MANAGER_NOTES_TEMPLATE_KEY, managerNotesTemplate);
+		setStoredValue(APPROVED_HASHTAGS_KEY, approvedHashtagsText);
 		setStoredValue(EMPLOYEE_IDS_KEY, employeeIdsText);
 		clearPeopleCache();
+		ui.settingsManagerNotesTemplate.setValue(managerNotesTemplate);
+		ui.settingsApprovedHashtags.setValue(approvedHashtagsText);
 		ui.settingsEmployeeIds.setValue(employeeIdsText);
+		if (ui.hashtags) {
+			ui.hashtags.setOptions(getApprovedHashtags());
+		}
+		return employeeIdsText;
+	}
+
+	async function saveSettings() {
+		const employeeIdsText = persistSettingsInputs();
 
 		updateSettingsCacheSummary();
-		setPanelStatus(settingsPanel, "Settings saved. Roster cache was cleared.", "success");
+		if (!employeeIdsText) {
+			setPanelStatus(settingsPanel, "Settings saved. Add assignee IDs to populate the roster cache.", "info");
+			return;
+		}
+
+		await refreshSettingsRosterCache("Settings saved. Roster refreshed");
 	}
 
 	async function refreshSettingsCache() {
+		const employeeIdsText = persistSettingsInputs();
+		updateSettingsCacheSummary();
+		if (!employeeIdsText) {
+			setPanelStatus(settingsPanel, "Add assignee IDs before refreshing the roster cache.", "info");
+			return;
+		}
+
+		await refreshSettingsRosterCache("Roster refreshed");
+	}
+
+	async function refreshSettingsRosterCache(successPrefix) {
 		setPanelStatus(settingsPanel, "");
 		setPanelLoading(settingsPanel, true, "Refreshing configured roster...");
 		try {
 			const people = await loadPeople(true);
 			updateSettingsCacheSummary();
-			setPanelStatus(settingsPanel, `Roster refreshed with ${people.length} assignee${people.length === 1 ? "" : "s"}.`, "success");
+			const message = `${successPrefix} with ${people.length} assignee${people.length === 1 ? "" : "s"}.`;
+			setPanelStatus(
+				settingsPanel,
+				people.length ? message : `${message} Check that the IDs are active Employee internal IDs or SC roster record IDs.`,
+				people.length ? "success" : "error",
+			);
 		} catch (error) {
 			setPanelStatus(settingsPanel, error.message || String(error), "error");
 		} finally {
@@ -889,19 +1150,52 @@
 		setPanelStatus(settingsPanel, "Roster cache cleared.", "info");
 	}
 
-	function defaultSelectedAssigneeLead() {
-		if (ui.lead) {
-			ui.lead.setValue(true);
-		}
-	}
-
 	function setGeneratedAddendum(name) {
 		if (!ui.detailsAdd || (ui.detailsAdd.getValue() && ui.detailsAdd.textarea.dataset.generated !== "1")) {
 			return;
 		}
-		const cleanName = String(name || "").replace(/\s+\([^)]*\)$/, "");
+		const cleanName = cleanAssigneeName(name);
 		ui.detailsAdd.setValue(`${todayDisplay()} - Please work with ${cleanName} on next steps to KT ${getInitials()}\n\n`);
 		ui.detailsAdd.textarea.dataset.generated = "1";
+	}
+
+	function hydrateManagerNotesField() {
+		const currentNotes = nsGet(FIELDS.managerNotes);
+		if (currentNotes) {
+			ui.managerNotes.setValue(currentNotes);
+			ui.managerNotes.textarea.dataset.generated = "0";
+			return;
+		}
+		setGeneratedManagerNotes(ui.assignee.getLabel());
+	}
+
+	function setGeneratedManagerNotes(name) {
+		if (!ui.managerNotes || (ui.managerNotes.getValue() && ui.managerNotes.textarea.dataset.generated !== "1")) {
+			return;
+		}
+		ui.managerNotes.setValue(buildManagerNotesFromTemplate(name));
+		ui.managerNotes.textarea.dataset.generated = "1";
+	}
+
+	function buildManagerNotesFromTemplate(name) {
+		return renderTemplate(getManagerNotesTemplate(), {
+			date: todayDisplay(),
+			initials: getInitials(),
+			assignee: cleanAssigneeName(name),
+			assigneeName: cleanAssigneeName(name),
+		});
+	}
+
+	function renderTemplate(template, values) {
+		return String(template || "")
+			.replace(/\\n/g, "\n")
+			.replace(/\{([a-zA-Z][\w]*)\}/g, (match, key) =>
+				Object.prototype.hasOwnProperty.call(values, key) ? values[key] : match,
+			);
+	}
+
+	function cleanAssigneeName(name) {
+		return String(name || "").replace(/\s+\([^)]*\)$/, "");
 	}
 
 	function validateQuickAssign(values) {
@@ -911,13 +1205,15 @@
 		return missing;
 	}
 
-	function saveQuickAssign() {
+	function saveQuickAssign(shouldSubmit = false) {
 		const values = {
 			assigneeId: ui.assignee.getValue(),
 			assigneeName: ui.assignee.getLabel(),
 			isLead: ui.lead.getValue(),
 			dateNeeded: inputDateToNetSuite(ui.dateNeeded.getValue()),
 			detailsAdd: ui.detailsAdd.getValue(),
+			managerNotes: ui.managerNotes.getValue(),
+			hashtags: ui.hashtags.getValue(),
 		};
 		const missing = validateQuickAssign(values);
 
@@ -938,20 +1234,52 @@
 				prependField(FIELDS.details, values.detailsAdd);
 			}
 
-			nsSet(FIELDS.managerNotes, buildManagerNotes(values));
+			nsSet(FIELDS.managerNotes, values.managerNotes);
+			nsSet(FIELDS.hashtags, values.hashtags);
+
+			if (shouldSubmit) {
+				setPanelStatus(assignPanel, "Applied changes. Submitting through the native NetSuite Save button...", "info");
+				submitNetSuiteForm();
+				return;
+			}
+
 			setPanelStatus(assignPanel, "Applied changes to the NetSuite form. Save the record when ready.", "success");
 		} catch (error) {
 			setPanelStatus(assignPanel, error.message || String(error), "error");
 		}
 	}
 
-	function buildManagerNotes(values) {
-		return `${todayDisplay()} - Staffed deal ${getInitials()}`;
-	}
-
 	function prependField(fieldId, text) {
 		const current = nsGet(fieldId, "");
 		nsSet(fieldId, `${text}${current}`);
+	}
+
+	function submitNetSuiteForm() {
+		const button = findNetSuiteSaveButton();
+		if (!button) {
+			throw new Error("Could not find the native NetSuite Save button. Changes were applied, but the record was not submitted.");
+		}
+		button.click();
+	}
+
+	function findNetSuiteSaveButton() {
+		const selectors = [
+			"#submitter",
+			"#secondarysubmitter",
+			"input[name='submitter']",
+			"#tbl_submitter input",
+			"input[id$='submitter'][type='button']",
+			"input[type='submit'][value='Save']",
+			"button[type='submit'][value='Save']",
+			"#btn_multibutton_submitter",
+		];
+		return selectors.map((selector) => document.querySelector(selector)).find((node) => node && !node.disabled && isVisible(node));
+	}
+
+	function isVisible(node) {
+		const rect = node.getBoundingClientRect();
+		const style = window.getComputedStyle(node);
+		return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
 	}
 
 	function registerMenus() {
@@ -1015,11 +1343,13 @@
 				padding: 8px 14px;
 				background: var(--scpa-surface);
 				border: 1px solid var(--scpa-line);
-				border-radius: var(--scpa-radius-card);
+				border-right: 0;
+				border-left: 0;
+				border-radius: 0;
 				color: var(--scpa-ink);
 				font-family: var(--scpa-font);
 				line-height: 1.5;
-				box-shadow: var(--scpa-shadow-sm);
+				box-shadow: none;
 			}
 
 			.scpa-toolbar-brand {
@@ -1289,6 +1619,82 @@
 			.scpa-combo-button:hover {
 				background: var(--scpa-frost);
 				color: var(--scpa-ink);
+			}
+
+			.scpa-tag-picker {
+				position: relative;
+			}
+
+			.scpa-tags {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 6px;
+				min-height: 38px;
+				padding: 6px 8px;
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-control);
+				background: var(--scpa-surface);
+			}
+
+			.scpa-tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				height: 24px;
+				padding: 0 8px;
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-pill);
+				background: var(--scpa-frost);
+				color: var(--scpa-text);
+				font-size: 12px;
+				font-weight: 650;
+			}
+
+			.scpa-tag-remove {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 16px;
+				height: 16px;
+				padding: 0;
+				border: 0;
+				border-radius: var(--scpa-radius-pill);
+				background: transparent;
+				color: var(--scpa-subtle);
+				cursor: pointer;
+				font: inherit;
+				line-height: 1;
+			}
+
+			.scpa-tag-remove:hover {
+				background: var(--scpa-line);
+				color: var(--scpa-ink);
+			}
+
+			.scpa-tag-input {
+				flex: 1 1 120px;
+				min-width: 96px;
+				height: 24px;
+				border: 0;
+				background: transparent;
+				color: var(--scpa-ink);
+				font: inherit;
+				font-size: 13px;
+				outline: 0;
+			}
+
+			.scpa-tag-input::placeholder {
+				color: var(--scpa-subtle);
+			}
+
+			.scpa-tags:focus-within {
+				border-color: var(--scpa-action);
+				outline: 3px solid rgba(208, 72, 65, 0.14);
+			}
+
+			.scpa-hashtag-menu {
+				top: calc(100% + 4px);
 			}
 
 			.scpa-menu {
