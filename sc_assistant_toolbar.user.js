@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.5
+// @version      0.1.7
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -702,14 +702,17 @@
 				grouped.get(parts.group).push({ tag, label: parts.label });
 			});
 
+			let groupIndex = 0;
 			grouped.forEach((items, group) => {
+				const toneClass = `scpa-tag-tone-${(groupIndex % 6) + 1}`;
+				groupIndex += 1;
 				const row = h("div", { class: "scpa-tag-toggle-row" });
 				items.forEach(({ tag, label }) => {
 					const isActive = selected.includes(tag);
 					const button = h(
 						"button",
 						{
-							class: `scpa-tag-toggle${isActive ? " scpa-tag-toggle-active" : ""}`,
+							class: `scpa-tag-toggle ${toneClass}${isActive ? " scpa-tag-toggle-active" : ""}`,
 							type: "button",
 							"aria-pressed": isActive ? "true" : "false",
 							"data-tag": tag,
@@ -721,7 +724,7 @@
 				});
 
 				groupsNode.appendChild(
-					h("div", { class: "scpa-tag-group" }, [
+					h("div", { class: `scpa-tag-group ${toneClass}` }, [
 						h("div", { class: "scpa-tag-group-title", text: `#${group}` }),
 						row,
 					]),
@@ -787,17 +790,14 @@
 		}
 
 		const toolbar = h("div", { id: "scpa-toolbar", class: "scpa-toolbar" }, [
-			h("div", { class: "scpa-toolbar-brand" }, [
-				h("span", { text: "SC Assistant Toolbar" }),
-			]),
-			h("div", { class: "scpa-toolbar-spacer" }),
-			h("button", { class: "scpa-toolbar-btn scpa-btn-ghost", type: "button", id: "scpa-open-settings", title: "Settings" }, [
-				icon("settings"),
-				"Settings",
-			]),
-			h("button", { class: "scpa-toolbar-btn scpa-btn-primary", type: "button", id: "scpa-open-assign" }, [
-				icon("plus"),
-				"Quick assign SC",
+			h("div", { class: "scpa-toolbar-actions" }, [
+				h("button", { class: "scpa-toolbar-btn scpa-toolbar-icon-btn scpa-btn-ghost", type: "button", id: "scpa-open-settings", title: "Settings", "aria-label": "Settings" }, [
+					icon("settings"),
+				]),
+				h("button", { class: "scpa-toolbar-btn scpa-btn-primary", type: "button", id: "scpa-open-assign" }, [
+					icon("plus"),
+					"Quick assign SC",
+				]),
 			]),
 		]);
 
@@ -1347,24 +1347,46 @@
 
 			#scpa-toolbar,
 			#scpa-panel-slot {
-				--scpa-canvas: #fafaf5;
+				--scpa-canvas: #f7f6f3;
 				--scpa-surface: #ffffff;
-				--scpa-frost: #e9e9e7;
-				--scpa-ink: #121212;
-				--scpa-text: #4d4d4d;
-				--scpa-muted: #686767;
-				--scpa-subtle: #7d7d7d;
-				--scpa-line: #cecdca;
-				--scpa-line-strong: #121212;
-				--scpa-action: #e8aa42;
-				--scpa-action-hover: #d9972f;
-				--scpa-success: #214c70;
-				--scpa-danger: #eb6c00;
+				--scpa-frost: #f1f4f5;
+				--scpa-ink: #181818;
+				--scpa-text: #3d3d3a;
+				--scpa-muted: #66635f;
+				--scpa-subtle: #9a9792;
+				--scpa-line: #dedbd5;
+				--scpa-line-soft: #ece9e3;
+				--scpa-line-strong: #326478;
+				--scpa-action: #326478;
+				--scpa-action-hover: #1d4050;
+				--scpa-action-soft: #eaf4f7;
+				--scpa-success: #326478;
+				--scpa-danger: #7a241a;
+				--scpa-next-gradient: linear-gradient(90deg, #376980 0%, #997faa 24%, #ffa5a5 48%, #d4976c 72%, #975d6b 100%);
+				--scpa-c-blue-50: #e8f4f8;
+				--scpa-c-blue-600: #7898a8;
+				--scpa-c-blue-900: #376980;
+				--scpa-c-teal-50: #ddeef2;
+				--scpa-c-teal-600: #326478;
+				--scpa-c-teal-900: #1d4050;
+				--scpa-c-coral-50: #fcebe8;
+				--scpa-c-coral-600: #e88070;
+				--scpa-c-coral-900: #8a3d35;
+				--scpa-c-amber-50: #fbf1da;
+				--scpa-c-amber-600: #e0b870;
+				--scpa-c-amber-900: #73521e;
+				--scpa-c-pink-50: #f8e8f0;
+				--scpa-c-pink-600: #e0a0b8;
+				--scpa-c-pink-900: #7a435b;
+				--scpa-c-purple-50: #f0eaf4;
+				--scpa-c-purple-600: #887898;
+				--scpa-c-purple-900: #4a3a5b;
 				--scpa-radius-control: 6px;
-				--scpa-radius-card: 12px;
+				--scpa-radius-card: 6px;
+				--scpa-radius-button: 3px;
 				--scpa-radius-pill: 9999px;
-				--scpa-shadow-sm: rgba(18, 18, 18, 0.06) 0 2px 8px 0;
-				--scpa-shadow-md: rgba(18, 18, 18, 0.12) 0 6px 18px 0;
+				--scpa-shadow-sm: rgba(50, 100, 120, 0.12) 0 0 0 1px;
+				--scpa-shadow-md: rgba(50, 100, 120, 0.16) 0 0 0 1px, rgba(24, 24, 24, 0.08) 0 14px 30px -18px;
 				--scpa-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 				--scpa-panel-width: 420px;
 			}
@@ -1379,11 +1401,12 @@
 			#scpa-toolbar {
 				display: flex;
 				align-items: center;
+				justify-content: flex-end;
 				gap: 10px;
-				min-height: 56px;
+				min-height: 52px;
 				margin: 8px 0 12px;
-				padding: 8px 14px;
-				background: var(--scpa-canvas);
+				padding: 8px 20px;
+				background: var(--scpa-frost);
 				border: 1px solid var(--scpa-line);
 				border-right: 0;
 				border-left: 0;
@@ -1394,18 +1417,12 @@
 				box-shadow: none;
 			}
 
-			.scpa-toolbar-brand {
+			.scpa-toolbar-actions {
 				display: flex;
 				align-items: center;
-				font-size: 15px;
-				font-weight: 650;
-				white-space: nowrap;
-				color: var(--scpa-ink);
-			}
-
-			.scpa-toolbar-spacer {
-				flex: 1;
-				min-width: 8px;
+				justify-content: flex-end;
+				gap: 10px;
+				margin-left: auto;
 			}
 
 			.scpa-toolbar-btn,
@@ -1424,7 +1441,7 @@
 				height: 40px;
 				padding: 0 16px;
 				border: 1px solid var(--scpa-line-strong);
-				border-radius: var(--scpa-radius-pill);
+				border-radius: var(--scpa-radius-button);
 				font-size: 13px;
 				font-weight: 650;
 				cursor: pointer;
@@ -1432,25 +1449,33 @@
 				transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 			}
 
+			.scpa-toolbar-icon-btn {
+				width: 40px;
+				padding: 0;
+			}
+
 			.scpa-btn-primary {
-				background: transparent;
+				background: var(--scpa-surface);
 				border-color: var(--scpa-action);
-				color: var(--scpa-ink);
+				color: var(--scpa-action);
 			}
 
 			.scpa-btn-primary:hover {
-				background: var(--scpa-action);
+				background: var(--scpa-action-soft);
 				border-color: var(--scpa-action);
 				box-shadow: none;
 			}
 
 			.scpa-btn-ghost {
-				background: transparent;
-				color: var(--scpa-ink);
+				background: var(--scpa-surface);
+				border-color: var(--scpa-line);
+				color: var(--scpa-muted);
 			}
 
 			.scpa-btn-ghost:hover {
-				background: var(--scpa-frost);
+				background: var(--scpa-action-soft);
+				border-color: var(--scpa-action);
+				color: var(--scpa-action);
 				box-shadow: none;
 			}
 
@@ -1481,7 +1506,7 @@
 				overflow: hidden;
 				background: var(--scpa-canvas);
 				border-left: 0 solid var(--scpa-line);
-				box-shadow: -8px 0 18px rgba(18, 18, 18, 0.1);
+				box-shadow: -8px 0 24px rgba(50, 100, 120, 0.12);
 				transition:
 					width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
 					border-left-width 0.01s 0.15s;
@@ -1511,6 +1536,19 @@
 				color: var(--scpa-ink);
 				font-family: var(--scpa-font);
 				line-height: 1.5;
+				overflow: hidden;
+				position: relative;
+			}
+
+			.scpa-panel::before {
+				content: "";
+				position: absolute;
+				top: 0;
+				right: 0;
+				left: 0;
+				z-index: 2;
+				height: 4px;
+				background: var(--scpa-next-gradient);
 			}
 
 			.scpa-panel[hidden] {
@@ -1521,8 +1559,8 @@
 				display: flex;
 				align-items: center;
 				min-height: 64px;
-				padding: 0 20px;
-				background: var(--scpa-canvas);
+				padding: 4px 20px 0;
+				background: var(--scpa-surface);
 				border-bottom: 1px solid var(--scpa-line);
 				color: var(--scpa-ink);
 				flex: 0 0 auto;
@@ -1530,8 +1568,8 @@
 
 			.scpa-panel-title {
 				flex: 1;
-				font-size: 15px;
-				font-weight: 650;
+				font-size: 17px;
+				font-weight: 700;
 			}
 
 			.scpa-close {
@@ -1542,15 +1580,15 @@
 				height: 28px;
 				padding: 0;
 				border: 0;
-				border-radius: var(--scpa-radius-control);
+				border-radius: var(--scpa-radius-button);
 				background: transparent;
 				color: var(--scpa-muted);
 				cursor: pointer;
 			}
 
 			.scpa-close:hover {
-				background: var(--scpa-frost);
-				color: var(--scpa-ink);
+				background: var(--scpa-action-soft);
+				color: var(--scpa-action);
 			}
 
 			.scpa-panel-body {
@@ -1560,7 +1598,7 @@
 				gap: 14px;
 				min-height: 0;
 				overflow-y: auto;
-				padding: 18px;
+				padding: 18px 18px 20px;
 			}
 
 			.scpa-panel-footer {
@@ -1571,8 +1609,8 @@
 				gap: 10px;
 				padding: 14px 18px;
 				border-top: 1px solid var(--scpa-line);
-				background: var(--scpa-canvas);
-				box-shadow: 0 -4px 12px rgba(18, 18, 18, 0.06);
+				background: var(--scpa-surface);
+				box-shadow: 0 -4px 16px rgba(50, 100, 120, 0.08);
 				flex: 0 0 auto;
 			}
 
@@ -1633,7 +1671,7 @@
 			.scpa-textarea:focus {
 				border-color: var(--scpa-action);
 				background: var(--scpa-surface);
-				outline: 3px solid rgba(232, 170, 66, 0.22);
+				outline: 3px solid rgba(50, 100, 120, 0.16);
 			}
 
 			.scpa-combo {
@@ -1662,8 +1700,8 @@
 			}
 
 			.scpa-combo-button:hover {
-				background: var(--scpa-frost);
-				color: var(--scpa-ink);
+				background: var(--scpa-action-soft);
+				color: var(--scpa-action);
 			}
 
 			.scpa-tag-picker {
@@ -1684,12 +1722,13 @@
 				border: 1px solid var(--scpa-line);
 				border-radius: var(--scpa-radius-card);
 				background: var(--scpa-surface);
+				box-shadow: var(--scpa-shadow-sm);
 			}
 
 			.scpa-tag-group-title,
 			.scpa-custom-tags-title {
 				margin-bottom: 7px;
-				color: var(--scpa-subtle);
+				color: var(--scpa-tag-ink, var(--scpa-muted));
 				font-size: 10px;
 				font-weight: 700;
 				letter-spacing: 0;
@@ -1721,20 +1760,58 @@
 			}
 
 			.scpa-tag-toggle:hover {
-				border-color: var(--scpa-action);
+				border-color: var(--scpa-tag-line, var(--scpa-action));
+				background: var(--scpa-tag-bg, var(--scpa-action-soft));
 			}
 
 			.scpa-tag-toggle-active {
-				border-color: var(--scpa-action);
-				background: var(--scpa-action);
-				color: var(--scpa-ink);
+				border-color: var(--scpa-tag-line, var(--scpa-action));
+				background: var(--scpa-tag-bg, var(--scpa-action-soft));
+				color: var(--scpa-tag-ink, var(--scpa-action));
+				box-shadow: inset 0 0 0 1px var(--scpa-surface);
+			}
+
+			.scpa-tag-tone-1 {
+				--scpa-tag-bg: var(--scpa-c-blue-50);
+				--scpa-tag-line: var(--scpa-c-blue-600);
+				--scpa-tag-ink: var(--scpa-c-blue-900);
+			}
+
+			.scpa-tag-tone-2 {
+				--scpa-tag-bg: var(--scpa-c-teal-50);
+				--scpa-tag-line: var(--scpa-c-teal-600);
+				--scpa-tag-ink: var(--scpa-c-teal-900);
+			}
+
+			.scpa-tag-tone-3 {
+				--scpa-tag-bg: var(--scpa-c-coral-50);
+				--scpa-tag-line: var(--scpa-c-coral-600);
+				--scpa-tag-ink: var(--scpa-c-coral-900);
+			}
+
+			.scpa-tag-tone-4 {
+				--scpa-tag-bg: var(--scpa-c-amber-50);
+				--scpa-tag-line: var(--scpa-c-amber-600);
+				--scpa-tag-ink: var(--scpa-c-amber-900);
+			}
+
+			.scpa-tag-tone-5 {
+				--scpa-tag-bg: var(--scpa-c-pink-50);
+				--scpa-tag-line: var(--scpa-c-pink-600);
+				--scpa-tag-ink: var(--scpa-c-pink-900);
+			}
+
+			.scpa-tag-tone-6 {
+				--scpa-tag-bg: var(--scpa-c-purple-50);
+				--scpa-tag-line: var(--scpa-c-purple-600);
+				--scpa-tag-ink: var(--scpa-c-purple-900);
 			}
 
 			.scpa-tag-help {
 				padding: 9px 10px;
 				border: 1px dashed var(--scpa-line);
 				border-radius: var(--scpa-radius-card);
-				background: var(--scpa-surface);
+				background: var(--scpa-frost);
 				color: var(--scpa-muted);
 				font-size: 12px;
 			}
@@ -1744,6 +1821,7 @@
 				border: 1px solid var(--scpa-line);
 				border-radius: var(--scpa-radius-card);
 				background: var(--scpa-surface);
+				box-shadow: var(--scpa-shadow-sm);
 			}
 
 			.scpa-custom-tags[hidden] {
@@ -1758,7 +1836,7 @@
 				padding: 0 9px;
 				border: 1px solid var(--scpa-line);
 				border-radius: var(--scpa-radius-pill);
-				background: var(--scpa-frost);
+				background: var(--scpa-action-soft);
 				color: var(--scpa-text);
 				font-size: 12px;
 				font-weight: 650;
@@ -1781,8 +1859,8 @@
 			}
 
 			.scpa-tag-remove:hover {
-				background: var(--scpa-line);
-				color: var(--scpa-ink);
+				background: var(--scpa-action);
+				color: var(--scpa-surface);
 			}
 
 			.scpa-menu {
@@ -1794,7 +1872,7 @@
 				max-height: 230px;
 				overflow-y: auto;
 				border: 1px solid var(--scpa-line);
-				border-radius: 12px;
+				border-radius: var(--scpa-radius-card);
 				background: var(--scpa-surface);
 				box-shadow: var(--scpa-shadow-md);
 			}
@@ -1818,7 +1896,7 @@
 			}
 
 			.scpa-menu-item:hover {
-				background: var(--scpa-frost);
+				background: var(--scpa-action-soft);
 			}
 
 			.scpa-menu-empty {
@@ -1860,7 +1938,7 @@
 				height: 18px;
 				border-radius: var(--scpa-radius-pill);
 				background: var(--scpa-surface);
-				box-shadow: 0 1px 2px rgba(24, 23, 23, 0.18);
+				box-shadow: 0 1px 2px rgba(24, 24, 24, 0.18);
 				transition: transform 0.16s ease;
 			}
 
@@ -1884,7 +1962,7 @@
 
 			.scpa-section-label {
 				margin-bottom: -4px;
-				color: var(--scpa-subtle);
+				color: var(--scpa-action);
 				font-size: 11px;
 				font-weight: 650;
 				letter-spacing: 0;
@@ -1899,7 +1977,7 @@
 				min-width: 80px;
 				height: 40px;
 				padding: 0 16px;
-				border-radius: var(--scpa-radius-pill);
+				border-radius: var(--scpa-radius-button);
 				font-size: 13px;
 				font-weight: 650;
 				cursor: pointer;
@@ -1912,26 +1990,28 @@
 			}
 
 			.scpa-secondary {
-				border: 1px solid var(--scpa-line-strong);
-				background: transparent;
+				border: 1px solid var(--scpa-line);
+				background: var(--scpa-surface);
 				color: var(--scpa-ink);
 			}
 
 			.scpa-secondary:hover {
-				background: var(--scpa-frost);
+				background: var(--scpa-action-soft);
+				border-color: var(--scpa-action);
+				color: var(--scpa-action);
 				box-shadow: none;
 			}
 
 			.scpa-primary-blue {
 				flex: 1;
-				border: 1px solid var(--scpa-ink);
-				background: var(--scpa-ink);
+				border: 1px solid var(--scpa-action);
+				background: var(--scpa-action);
 				color: var(--scpa-surface);
 			}
 
 			.scpa-primary-blue:hover {
-				background: #2b2b2b;
-				border-color: #2b2b2b;
+				background: var(--scpa-action-hover);
+				border-color: var(--scpa-action-hover);
 				box-shadow: none;
 			}
 
@@ -1958,7 +2038,7 @@
 				border: 1px solid var(--scpa-line);
 				border-radius: var(--scpa-radius-card);
 				background: var(--scpa-surface);
-				box-shadow: var(--scpa-shadow-sm);
+				box-shadow: var(--scpa-shadow-md);
 			}
 
 			.scpa-cache-heading,
@@ -1991,12 +2071,12 @@
 			}
 
 			.scpa-cache-ready {
-				background: var(--scpa-frost);
-				color: var(--scpa-ink);
+				background: var(--scpa-action-soft);
+				color: var(--scpa-action);
 			}
 
 			.scpa-cache-expired {
-				background: #fff4e8;
+				background: #fbe7e3;
 				color: var(--scpa-danger);
 			}
 
@@ -2025,17 +2105,17 @@
 			}
 
 			.scpa-status-info {
-				background: var(--scpa-frost);
-				color: var(--scpa-text);
+				background: var(--scpa-action-soft);
+				color: var(--scpa-action);
 			}
 
 			.scpa-status-success {
-				background: #f1f7f3;
+				background: var(--scpa-action-soft);
 				color: var(--scpa-success);
 			}
 
 			.scpa-status-error {
-				background: #fff4e8;
+				background: #fbe7e3;
 				color: var(--scpa-danger);
 			}
 
@@ -2043,15 +2123,15 @@
 				display: flex;
 				align-items: center;
 				gap: 9px;
-				background: var(--scpa-frost);
-				color: var(--scpa-text);
+				background: var(--scpa-action-soft);
+				color: var(--scpa-action);
 				font-weight: 650;
 			}
 
 			.scpa-spinner {
 				width: 16px;
 				height: 16px;
-				border: 2px solid rgba(18, 18, 18, 0.16);
+				border: 2px solid rgba(50, 100, 120, 0.18);
 				border-top-color: var(--scpa-action);
 				border-radius: 50%;
 				animation: scpa-spin 0.85s linear infinite;
