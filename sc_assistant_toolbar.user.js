@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.8
+// @version      0.1.10
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -37,6 +37,8 @@
 	const INITIALS_KEY = "sc_assistant_toolbar_initials_v1";
 	const MANAGER_NOTES_TEMPLATE_KEY = "sc_assistant_toolbar_manager_notes_template_v1";
 	const APPROVED_HASHTAGS_KEY = "sc_assistant_toolbar_approved_hashtags_v1";
+	const AUTO_OPEN_ENABLED_KEY = "sc_assistant_toolbar_auto_open_enabled_v1";
+	const AUTO_OPEN_URL_KEY = "sc_assistant_toolbar_auto_open_url_v1";
 	const DEFAULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 	const DEFAULT_EMPLOYEE_IDS = [];
 	const DEFAULT_MANAGER_NOTES_TEMPLATE = "{date} - Staffed deal {initials}";
@@ -212,6 +214,15 @@
 		return parseHashtags(getApprovedHashtagsText());
 	}
 
+	function getAutoOpenEnabled() {
+		const stored = getStoredValue(AUTO_OPEN_ENABLED_KEY, false);
+		return stored === true || stored === "true";
+	}
+
+	function getAutoOpenUrlPattern() {
+		return String(getStoredValue(AUTO_OPEN_URL_KEY, "") || "");
+	}
+
 	function getEmployeeIdsText() {
 		const stored = getStoredValue(EMPLOYEE_IDS_KEY, DEFAULT_EMPLOYEE_IDS.join(", "));
 		return Array.isArray(stored) ? stored.join(", ") : String(stored || "");
@@ -228,6 +239,53 @@
 				.map((item) => item.trim())
 				.filter(Boolean),
 		);
+	}
+
+	function currentAutoOpenPattern() {
+		const url = new URL(window.location.href);
+		const rectype = url.searchParams.get("rectype");
+		return rectype ? `${url.origin}${url.pathname}?rectype=${rectype}*&e=T*` : `${url.origin}${url.pathname}*e=T*`;
+	}
+
+	function isEditModeUrl(url = window.location.href) {
+		try {
+			return new URL(url).searchParams.get("e") === "T";
+		} catch (error) {
+			return false;
+		}
+	}
+
+	function parseUrlPatterns(value) {
+		return uniqueValues(
+			String(value || "")
+				.split(/[\n,]+/)
+				.map((pattern) => pattern.trim())
+				.filter(Boolean),
+		);
+	}
+
+	function urlMatchesPattern(url, pattern) {
+		const cleanUrl = String(url || "").split("#")[0];
+		const cleanPattern = String(pattern || "").trim();
+		if (!cleanPattern) {
+			return false;
+		}
+		if (!cleanPattern.includes("*")) {
+			return cleanUrl === cleanPattern;
+		}
+		const escaped = cleanPattern
+			.split("*")
+			.map((part) => part.replace(/[|\\{}()[\]^$+?.]/g, "\\$&"))
+			.join(".*");
+		return new RegExp(`^${escaped}$`).test(cleanUrl);
+	}
+
+	function shouldAutoOpenAssignPanel() {
+		if (!getAutoOpenEnabled() || !isEditModeUrl()) {
+			return false;
+		}
+		const patterns = parseUrlPatterns(getAutoOpenUrlPattern());
+		return patterns.some((pattern) => urlMatchesPattern(window.location.href, pattern));
 	}
 
 	function parseHashtags(value) {
@@ -888,7 +946,7 @@
 			required: true,
 			placeholder: "Choose an SC",
 			onSelect: (option) => {
-				setGeneratedAddendum(option.name || option.label);
+				setGeneratedAddendum(option);
 				setGeneratedManagerNotes(option.name || option.label);
 			},
 			onClear: clearGeneratedAssigneeText,
@@ -948,6 +1006,11 @@
 			label: "Comment Signature",
 			placeholder: "[SC Mgr]",
 		});
+		ui.settingsAutoOpen = createToggle({ label: "Auto-open Quick Assign panel", checked: false });
+		ui.settingsAutoOpenUrl = createTextInput({
+			label: "Auto-open URL Match",
+			placeholder: currentAutoOpenPattern(),
+		});
 		ui.settingsManagerNotesTemplate = createTextarea({
 			label: "SC Manager Notes Template",
 			placeholder: "{date} - Staffed deal {initials}",
@@ -970,6 +1033,8 @@
 			panelStatus(),
 			h("div", { class: "scpa-section-label", text: "Defaults" }),
 			ui.settingsInitials.root,
+			ui.settingsAutoOpen.root,
+			ui.settingsAutoOpenUrl.root,
 			ui.settingsManagerNotesTemplate.root,
 			ui.settingsApprovedHashtags.root,
 			ui.settingsEmployeeIds.root,
@@ -1092,6 +1157,8 @@
 			return;
 		}
 		ui.settingsInitials.setValue(getInitials());
+		ui.settingsAutoOpen.setValue(getAutoOpenEnabled());
+		ui.settingsAutoOpenUrl.setValue(getAutoOpenUrlPattern());
 		ui.settingsManagerNotesTemplate.setValue(getManagerNotesTemplate());
 		ui.settingsApprovedHashtags.setValue(getApprovedHashtagsText());
 		ui.settingsEmployeeIds.setValue(getEmployeeIdsText());
@@ -1128,15 +1195,23 @@
 
 	function persistSettingsInputs() {
 		const initials = ui.settingsInitials.getValue() || "[SC Mgr]";
+		const autoOpenEnabled = ui.settingsAutoOpen.getValue();
+		const autoOpenUrlPattern = autoOpenEnabled
+			? (ui.settingsAutoOpenUrl.getValue().trim() || currentAutoOpenPattern())
+			: ui.settingsAutoOpenUrl.getValue().trim();
 		const managerNotesTemplate = ui.settingsManagerNotesTemplate.getValue() || DEFAULT_MANAGER_NOTES_TEMPLATE;
 		const approvedHashtagsText = parseHashtags(ui.settingsApprovedHashtags.getValue()).join(", ");
 		const employeeIdsText = parseEmployeeIds(ui.settingsEmployeeIds.getValue()).join(", ");
 
 		setStoredValue(INITIALS_KEY, initials);
+		setStoredValue(AUTO_OPEN_ENABLED_KEY, autoOpenEnabled);
+		setStoredValue(AUTO_OPEN_URL_KEY, autoOpenUrlPattern);
 		setStoredValue(MANAGER_NOTES_TEMPLATE_KEY, managerNotesTemplate);
 		setStoredValue(APPROVED_HASHTAGS_KEY, approvedHashtagsText);
 		setStoredValue(EMPLOYEE_IDS_KEY, employeeIdsText);
 		clearPeopleCache();
+		ui.settingsAutoOpen.setValue(autoOpenEnabled);
+		ui.settingsAutoOpenUrl.setValue(autoOpenUrlPattern);
 		ui.settingsManagerNotesTemplate.setValue(managerNotesTemplate);
 		ui.settingsApprovedHashtags.setValue(approvedHashtagsText);
 		ui.settingsEmployeeIds.setValue(employeeIdsText);
@@ -1194,13 +1269,29 @@
 		setPanelStatus(settingsPanel, "Roster cache cleared.", "info");
 	}
 
-	function setGeneratedAddendum(name) {
+	function setGeneratedAddendum(assignee) {
 		if (!ui.detailsAdd || (ui.detailsAdd.getValue() && ui.detailsAdd.textarea.dataset.generated !== "1")) {
 			return;
 		}
-		const cleanName = cleanAssigneeName(name);
-		ui.detailsAdd.setValue(`${todayDisplay()} - Please work with ${cleanName} on next steps to KT ${getInitials()}\n\n`);
+		const assigneeText = formatAssigneeForAddendum(assignee);
+		ui.detailsAdd.setValue(`${todayDisplay()} - Please work with ${assigneeText} on next steps to KT ${getInitials()}\n\n`);
 		ui.detailsAdd.textarea.dataset.generated = "1";
+	}
+
+	function formatAssigneeForAddendum(assignee) {
+		if (assignee && typeof assignee === "object") {
+			const name = cleanAssigneeName(assignee.name || assignee.label);
+			return assignee.location ? `${name} (${assignee.location})` : name;
+		}
+		const label = String(assignee || "");
+		const location = extractLocationFromLabel(label);
+		const name = cleanAssigneeName(label);
+		return location ? `${name} (${location})` : name;
+	}
+
+	function extractLocationFromLabel(label) {
+		const match = String(label || "").match(/\(([^)]*)\)\s*$/);
+		return match ? match[1] : "";
 	}
 
 	function clearGeneratedAssigneeText() {
@@ -1345,6 +1436,17 @@
 				}
 			} catch (error) {
 				warn("Configured roster refresh failed", error);
+			}
+		});
+	}
+
+	function maybeAutoOpenAssignPanel() {
+		if (!shouldAutoOpenAssignPanel()) {
+			return;
+		}
+		deferPanelWork(() => {
+			if (!activePanel) {
+				openPanel("assign");
 			}
 		});
 	}
@@ -2227,6 +2329,7 @@
 		injectStyles();
 		buildToolbar();
 		registerMenus();
+		maybeAutoOpenAssignPanel();
 		log("Loaded simplified main form workflow.");
 	}
 
