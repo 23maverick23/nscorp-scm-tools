@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.11
+// @version      0.1.12
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -46,6 +46,7 @@
 
 	const FIELDS = {
 		requestStatus: "custrecord_screq_status",
+		engagementStatus: "custrecord_screq_engmnt_status",
 		assignee: "custrecord_screq_assignee",
 		lead: "custrecord_screq_assigned_lead",
 		details: "custrecord_screq_details",
@@ -57,6 +58,8 @@
 
 	const STATUS = {
 		staffed: 2,
+		cancelled: 4,
+		engagementCancelled: 5,
 	};
 
 	const ICONS = {
@@ -978,6 +981,7 @@
 			panelStatus(),
 			ui.assignee.root,
 			ui.lead.root,
+			h("button", { class: "scpa-panel-btn scpa-cancel scpa-cancel-request", type: "button", onclick: cancelRequest }, ["Cancel Request"]),
 			ui.detailsAdd.root,
 			h("div", { class: "scpa-divider" }),
 			h("div", { class: "scpa-section-label", text: "Manager Fields" }),
@@ -1397,6 +1401,23 @@
 	function prependField(fieldId, text) {
 		const current = nsGet(fieldId, "");
 		nsSet(fieldId, `${text}${current}`);
+	}
+
+	function cancelRequest() {
+		if (!window.confirm("Mark this SC Request as cancelled? Changes will be applied to the form but not saved until you save the record.")) {
+			return;
+		}
+		const comment = `SC Request cancelled by SC Manager (${getInitials()}). \nPlease create a new request if needed.\n---\n\n`;
+		try {
+			prependField(FIELDS.details, comment);
+			nsSet(FIELDS.requestStatus, STATUS.cancelled);
+			nsSet(FIELDS.engagementStatus, STATUS.engagementCancelled);
+			nsSet(FIELDS.lead, "F");
+			ui.lead.setValue(false);
+			setPanelStatus(assignPanel, "Marked request cancelled on the NetSuite form. Save the record when ready.", "success");
+		} catch (error) {
+			setPanelStatus(assignPanel, error.message || String(error), "error");
+		}
 	}
 
 	function submitNetSuiteForm() {
@@ -2155,6 +2176,10 @@
 				border-color: var(--scpa-danger);
 				color: var(--scpa-danger);
 				box-shadow: none;
+			}
+
+			.scpa-cancel-request {
+				width: 100%;
 			}
 
 			.scpa-primary-blue {
