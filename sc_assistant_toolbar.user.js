@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.12
+// @version      0.1.16
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -39,10 +39,40 @@
 	const APPROVED_HASHTAGS_KEY = "sc_assistant_toolbar_approved_hashtags_v1";
 	const AUTO_OPEN_ENABLED_KEY = "sc_assistant_toolbar_auto_open_enabled_v1";
 	const AUTO_OPEN_URL_KEY = "sc_assistant_toolbar_auto_open_url_v1";
+	const EXPAND_DETAILS_ENABLED_KEY = "sc_assistant_toolbar_expand_details_enabled_v1";
+	const QUEUE_VISIBILITY_KEY = "sc_assistant_toolbar_queue_visibility_v1";
 	const DEFAULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 	const DEFAULT_EMPLOYEE_IDS = [];
 	const DEFAULT_MANAGER_NOTES_TEMPLATE = "{date} - Staffed deal {initials}";
 	const DEFAULT_APPROVED_HASHTAGS = "#emg";
+	const DEFAULT_QUEUE_VISIBILITY = {
+		innovation: true,
+		coe: true,
+		lab: true,
+	};
+	const QUEUE_DEFINITIONS = [
+		{
+			key: "innovation",
+			label: "SCAI Innovation",
+			tone: "yellow",
+			assigneeId: "71069",
+			assigneeName: "Joe Friedman",
+		},
+		{
+			key: "coe",
+			label: "SCAI CoE",
+			tone: "red",
+			assigneeId: "71347",
+			assigneeName: "Ryan Morrissey",
+		},
+		{
+			key: "lab",
+			label: "SCAI Lab",
+			tone: "green",
+			assigneeId: "952626",
+			assigneeName: "Luke Bradley",
+		},
+	];
 
 	const FIELDS = {
 		requestStatus: "custrecord_screq_status",
@@ -52,6 +82,7 @@
 		details: "custrecord_screq_details",
 		managerNotes: "custrecord_screq_scmanager_notes",
 		hashtags: "custrecord_screq_hashtags",
+		crossVertical: "custrecord_screq_cross_vertical",
 		deliverable: "custrecord_screq_engmnt_deliverable",
 		complexFlag: "custrecord_sc_complex_flag",
 	};
@@ -226,6 +257,22 @@
 		return String(getStoredValue(AUTO_OPEN_URL_KEY, "") || "");
 	}
 
+	function getExpandDetailsEnabled() {
+		const stored = getStoredValue(EXPAND_DETAILS_ENABLED_KEY, true);
+		return stored === true || stored === "true";
+	}
+
+	function getQueueVisibility() {
+		const stored = getStoredValue(QUEUE_VISIBILITY_KEY, DEFAULT_QUEUE_VISIBILITY);
+		if (!stored || typeof stored !== "object" || Array.isArray(stored)) {
+			return { ...DEFAULT_QUEUE_VISIBILITY };
+		}
+		return {
+			...DEFAULT_QUEUE_VISIBILITY,
+			...stored,
+		};
+	}
+
 	function getEmployeeIdsText() {
 		const stored = getStoredValue(EMPLOYEE_IDS_KEY, DEFAULT_EMPLOYEE_IDS.join(", "));
 		return Array.isArray(stored) ? stored.join(", ") : String(stored || "");
@@ -298,6 +345,15 @@
 				.map(normalizeHashtag)
 				.filter(Boolean),
 		);
+	}
+
+	function mergeHashtags(value, nextTag) {
+		const tags = parseHashtags(value);
+		const tag = normalizeHashtag(nextTag);
+		if (tag && !tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) {
+			tags.unshift(tag);
+		}
+		return tags.join(",");
 	}
 
 	function normalizeHashtag(value) {
@@ -570,9 +626,14 @@
 		wrapper.append(input, hidden, clearButton, button, menu);
 		field.root.appendChild(wrapper);
 
-		function open() {
+		function getOpenQuery() {
+			const selectedLabel = input.getAttribute("data-selected-label");
+			return selected && selectedLabel && input.value === selectedLabel ? "" : input.value;
+		}
+
+		function open(query = getOpenQuery()) {
 			menu.hidden = false;
-			render(input.value);
+			render(query);
 		}
 
 		function close() {
@@ -664,7 +725,7 @@
 		});
 		button.addEventListener("click", () => {
 			if (menu.hidden) {
-				open();
+				open("");
 				input.focus();
 			} else {
 				close();
@@ -703,7 +764,7 @@
 						return;
 					}
 				}
-				render(input.value);
+				render(getOpenQuery());
 			},
 			setValue(value) {
 				const match = currentOptions.find((option) => option.value === String(value));
@@ -853,15 +914,52 @@
 		};
 	}
 
+	function createQueueActions() {
+		const root = h("div", { class: "scpa-queue-actions" }, [
+			h("div", { class: "scpa-section-label", text: "Reassign Queue" }),
+		]);
+		const row = h("div", { class: "scpa-queue-row" });
+		const buttons = {};
+
+		QUEUE_DEFINITIONS.forEach((queue) => {
+			const [prefix, ...nameParts] = queue.label.split(/\s+/);
+			const button = h(
+				"button",
+				{
+					class: `scpa-queue-btn scpa-queue-${queue.tone}`,
+					type: "button",
+					"data-queue": queue.key,
+				},
+				[
+					h("span", { class: "scpa-queue-prefix", text: prefix }),
+					h("span", { class: "scpa-queue-name", text: nameParts.join(" ") }),
+				],
+			);
+			button.addEventListener("click", () => {
+				reassignToQueue(queue);
+			});
+			buttons[queue.key] = button;
+			row.appendChild(button);
+		});
+
+		root.appendChild(row);
+		return { root, buttons };
+	}
+
 	function buildToolbar() {
 		if (document.getElementById("scpa-toolbar")) {
 			return;
 		}
 
 		const toolbar = h("div", { id: "scpa-toolbar", class: "scpa-toolbar" }, [
-			h("div", { class: "scpa-toolbar-actions" }, [
+			h("div", { class: "scpa-toolbar-left" }, [
 				h("button", { class: "scpa-toolbar-btn scpa-toolbar-icon-btn scpa-btn-ghost", type: "button", id: "scpa-open-settings", title: "Settings", "aria-label": "Settings" }, [
 					icon("settings"),
+				]),
+			]),
+			h("div", { class: "scpa-toolbar-actions" }, [
+				h("button", { class: "scpa-toolbar-btn scpa-cancel", type: "button", id: "scpa-cancel-request" }, [
+					"Cancel request",
 				]),
 				h("button", { class: "scpa-toolbar-btn scpa-btn-primary", type: "button", id: "scpa-open-assign" }, [
 					icon("plus"),
@@ -883,6 +981,7 @@
 
 		toolbar.querySelector("#scpa-open-assign").addEventListener("click", () => togglePanel("assign"));
 		toolbar.querySelector("#scpa-open-settings").addEventListener("click", () => togglePanel("settings"));
+		toolbar.querySelector("#scpa-cancel-request").addEventListener("click", cancelRequest);
 	}
 
 	function ensurePanelHost() {
@@ -954,7 +1053,7 @@
 			},
 			onClear: clearGeneratedAssigneeText,
 		});
-		ui.lead = createToggle({ label: "Lead SC", checked: false });
+		ui.queueActions = createQueueActions();
 		ui.detailsAdd = createTextarea({
 			label: "SC Request Details Addendum",
 			placeholder: "Text to prepend to the beginning of the SC Request Details on Save...",
@@ -979,9 +1078,8 @@
 		const body = h("div", { class: "scpa-panel-body" }, [
 			panelLoading(),
 			panelStatus(),
+			ui.queueActions.root,
 			ui.assignee.root,
-			ui.lead.root,
-			h("button", { class: "scpa-panel-btn scpa-cancel scpa-cancel-request", type: "button", onclick: cancelRequest }, ["Cancel Request"]),
 			ui.detailsAdd.root,
 			h("div", { class: "scpa-divider" }),
 			h("div", { class: "scpa-section-label", text: "Manager Fields" }),
@@ -1015,6 +1113,11 @@
 			label: "Auto-open URL Match",
 			placeholder: currentAutoOpenPattern(),
 		});
+		ui.settingsExpandDetails = createToggle({ label: "Expand native Request Details field", checked: true });
+		ui.settingsQueueVisibility = {};
+		QUEUE_DEFINITIONS.forEach((queue) => {
+			ui.settingsQueueVisibility[queue.key] = createToggle({ label: `Show ${queue.label} queue button`, checked: true });
+		});
 		ui.settingsManagerNotesTemplate = createTextarea({
 			label: "SC Manager Notes Template",
 			placeholder: "{date} - Staffed deal {initials}",
@@ -1043,6 +1146,9 @@
 			ui.settingsInitials.root,
 			ui.settingsAutoOpen.root,
 			ui.settingsAutoOpenUrl.root,
+			ui.settingsExpandDetails.root,
+			h("div", { class: "scpa-section-label", text: "Queue Buttons" }),
+			...QUEUE_DEFINITIONS.map((queue) => ui.settingsQueueVisibility[queue.key].root),
 			ui.settingsManagerNotesTemplate.root,
 			ui.settingsApprovedHashtags.root,
 			ui.settingsEmployeeIds.root,
@@ -1126,7 +1232,7 @@
 
 	function hydrateAssignPanel(runId) {
 		setPanelStatus(assignPanel, "");
-		ui.lead.setValue(nsGet(FIELDS.lead, "F") === "T");
+		updateQueueActionsVisibility();
 		ui.hashtags.setOptions(getApprovedHashtags());
 		ui.hashtags.setValue(nsGet(FIELDS.hashtags));
 		ui.assignee.setLoading("Loading configured assignees...");
@@ -1160,6 +1266,26 @@
 			});
 	}
 
+	function updateQueueActionsVisibility() {
+		if (!ui.queueActions) {
+			return;
+		}
+		const visibility = getQueueVisibility();
+		let visibleCount = 0;
+		QUEUE_DEFINITIONS.forEach((queue) => {
+			const button = ui.queueActions.buttons[queue.key];
+			if (!button) {
+				return;
+			}
+			const isVisible = visibility[queue.key] !== false;
+			button.hidden = !isVisible;
+			if (isVisible) {
+				visibleCount += 1;
+			}
+		});
+		ui.queueActions.root.hidden = visibleCount === 0;
+	}
+
 	function hydrateSettingsPanel(runId) {
 		if (activePanel !== "settings" || runId !== settingsHydrationRun) {
 			return;
@@ -1167,6 +1293,11 @@
 		ui.settingsInitials.setValue(getInitials());
 		ui.settingsAutoOpen.setValue(getAutoOpenEnabled());
 		ui.settingsAutoOpenUrl.setValue(getAutoOpenUrlPattern());
+		ui.settingsExpandDetails.setValue(getExpandDetailsEnabled());
+		const queueVisibility = getQueueVisibility();
+		QUEUE_DEFINITIONS.forEach((queue) => {
+			ui.settingsQueueVisibility[queue.key].setValue(queueVisibility[queue.key] !== false);
+		});
 		ui.settingsManagerNotesTemplate.setValue(getManagerNotesTemplate());
 		ui.settingsApprovedHashtags.setValue(getApprovedHashtagsText());
 		ui.settingsEmployeeIds.setValue(getEmployeeIdsText());
@@ -1207,6 +1338,11 @@
 		const autoOpenUrlPattern = autoOpenEnabled
 			? (ui.settingsAutoOpenUrl.getValue().trim() || currentAutoOpenPattern())
 			: ui.settingsAutoOpenUrl.getValue().trim();
+		const expandDetailsEnabled = ui.settingsExpandDetails.getValue();
+		const queueVisibility = {};
+		QUEUE_DEFINITIONS.forEach((queue) => {
+			queueVisibility[queue.key] = ui.settingsQueueVisibility[queue.key].getValue();
+		});
 		const managerNotesTemplate = ui.settingsManagerNotesTemplate.getValue() || DEFAULT_MANAGER_NOTES_TEMPLATE;
 		const approvedHashtagsText = parseHashtags(ui.settingsApprovedHashtags.getValue()).join(", ");
 		const employeeIdsText = parseEmployeeIds(ui.settingsEmployeeIds.getValue()).join(", ");
@@ -1214,18 +1350,26 @@
 		setStoredValue(INITIALS_KEY, initials);
 		setStoredValue(AUTO_OPEN_ENABLED_KEY, autoOpenEnabled);
 		setStoredValue(AUTO_OPEN_URL_KEY, autoOpenUrlPattern);
+		setStoredValue(EXPAND_DETAILS_ENABLED_KEY, expandDetailsEnabled);
+		setStoredValue(QUEUE_VISIBILITY_KEY, queueVisibility);
 		setStoredValue(MANAGER_NOTES_TEMPLATE_KEY, managerNotesTemplate);
 		setStoredValue(APPROVED_HASHTAGS_KEY, approvedHashtagsText);
 		setStoredValue(EMPLOYEE_IDS_KEY, employeeIdsText);
 		clearPeopleCache();
 		ui.settingsAutoOpen.setValue(autoOpenEnabled);
 		ui.settingsAutoOpenUrl.setValue(autoOpenUrlPattern);
+		ui.settingsExpandDetails.setValue(expandDetailsEnabled);
+		QUEUE_DEFINITIONS.forEach((queue) => {
+			ui.settingsQueueVisibility[queue.key].setValue(queueVisibility[queue.key]);
+		});
 		ui.settingsManagerNotesTemplate.setValue(managerNotesTemplate);
 		ui.settingsApprovedHashtags.setValue(approvedHashtagsText);
 		ui.settingsEmployeeIds.setValue(employeeIdsText);
 		if (ui.hashtags) {
 			ui.hashtags.setOptions(getApprovedHashtags());
 		}
+		updateQueueActionsVisibility();
+		applyNativeDetailsExpansion();
 		return employeeIdsText;
 	}
 
@@ -1275,6 +1419,48 @@
 		clearPeopleCache();
 		updateSettingsCacheSummary();
 		setPanelStatus(settingsPanel, "Roster cache cleared.", "info");
+	}
+
+	async function reassignToQueue(queue) {
+		setPanelStatus(assignPanel, "");
+		setPanelLoading(assignPanel, true, `Reassigning to ${queue.label}...`);
+		try {
+			await afterPaint();
+			const assignee = resolveQueueAssignee(queue);
+			const updatedHashtags = mergeHashtags(nsGet(FIELDS.hashtags), "#xvr");
+			nsSet(FIELDS.assignee, assignee.value);
+			nsSet(FIELDS.lead, "F");
+			nsSet(FIELDS.crossVertical, "T");
+			nsSet(FIELDS.hashtags, updatedHashtags);
+			if (ui.assignee) {
+				ui.assignee.selectOption(assignee, true);
+			}
+			if (ui.hashtags) {
+				ui.hashtags.setValue(updatedHashtags);
+			}
+			setPanelStatus(assignPanel, `${queue.label} selected for ${assignee.name || assignee.label}. Save the record when ready.`, "success");
+		} catch (error) {
+			setPanelStatus(assignPanel, error.message || String(error), "error");
+		} finally {
+			setPanelLoading(assignPanel, false);
+		}
+	}
+
+	function resolveQueueAssignee(queue) {
+		try {
+			const matches = fetchConfiguredRosterPeople([queue.assigneeId]);
+			if (matches.length) {
+				return matches[0];
+			}
+		} catch (error) {
+			warn(`Could not resolve queue assignee ${queue.assigneeId}`, error);
+		}
+		return {
+			value: queue.assigneeId,
+			label: queue.assigneeName,
+			name: queue.assigneeName,
+			employeeRecordId: queue.assigneeId,
+		};
 	}
 
 	function setGeneratedAddendum(assignee) {
@@ -1360,7 +1546,6 @@
 		const values = {
 			assigneeId: ui.assignee.getValue(),
 			assigneeName: ui.assignee.getLabel(),
-			isLead: ui.lead.getValue(),
 			detailsAdd: ui.detailsAdd.getValue(),
 			managerNotes: ui.managerNotes.getValue(),
 			hashtags: ui.hashtags.getValue(),
@@ -1375,7 +1560,7 @@
 		try {
 			nsSet(FIELDS.requestStatus, STATUS.staffed);
 			nsSet(FIELDS.assignee, values.assigneeId);
-			nsSet(FIELDS.lead, values.isLead ? "T" : "F");
+			nsSet(FIELDS.lead, "F");
 			nsSet(FIELDS.deliverable, 53);
 			nsSet(FIELDS.complexFlag, 2);
 
@@ -1413,11 +1598,18 @@
 			nsSet(FIELDS.requestStatus, STATUS.cancelled);
 			nsSet(FIELDS.engagementStatus, STATUS.engagementCancelled);
 			nsSet(FIELDS.lead, "F");
-			ui.lead.setValue(false);
-			setPanelStatus(assignPanel, "Marked request cancelled on the NetSuite form. Save the record when ready.", "success");
+			reportCancelResult("Marked request cancelled on the NetSuite form. Save the record when ready.", "success");
 		} catch (error) {
-			setPanelStatus(assignPanel, error.message || String(error), "error");
+			reportCancelResult(error.message || String(error), "error");
 		}
+	}
+
+	function reportCancelResult(message, type) {
+		if (assignPanel && activePanel === "assign") {
+			setPanelStatus(assignPanel, message, type);
+			return;
+		}
+		window.alert(message);
 	}
 
 	function submitNetSuiteForm() {
@@ -1476,6 +1668,34 @@
 		});
 	}
 
+	function applyNativeDetailsExpansion(retries = 8) {
+		const textarea = document.getElementById(FIELDS.details);
+		if (!textarea) {
+			if (retries > 0) {
+				setTimeout(() => applyNativeDetailsExpansion(retries - 1), 250);
+			}
+			return;
+		}
+
+		const wrapper = textarea.closest(".uir-text-area-wrapper");
+		const fieldWrapper = textarea.closest(".uir-field-wrapper");
+		const enabled = getExpandDetailsEnabled();
+		if (wrapper) {
+			wrapper.classList.toggle("scpa-native-details-expanded", enabled);
+		}
+		if (fieldWrapper) {
+			fieldWrapper.classList.toggle("scpa-native-details-field-expanded", enabled);
+		}
+		textarea.classList.toggle("scpa-native-details-textarea-expanded", enabled);
+		if (enabled) {
+			textarea.setAttribute("rows", "16");
+			textarea.setAttribute("cols", "80");
+		} else {
+			textarea.setAttribute("rows", "4");
+			textarea.setAttribute("cols", "40");
+		}
+	}
+
 	function injectStyles() {
 		addStyles(`
 			#scpa-toolbar,
@@ -1531,6 +1751,24 @@
 				--scpa-panel-width: 420px;
 			}
 
+			.uir-text-area-wrapper.scpa-native-details-expanded {
+				width: min(760px, calc(100vw - var(--scpa-panel-width, 0px) - 96px)) !important;
+				max-width: calc(100vw - var(--scpa-panel-width, 0px) - 32px) !important;
+				height: 520px !important;
+				min-height: 520px !important;
+			}
+
+			.uir-field-wrapper.scpa-native-details-field-expanded {
+				max-width: min(860px, calc(100vw - var(--scpa-panel-width, 0px) - 32px)) !important;
+			}
+
+			textarea#custrecord_screq_details.scpa-native-details-textarea-expanded {
+				box-sizing: border-box !important;
+				width: 100% !important;
+				height: calc(100% - 24px) !important;
+				min-height: 480px !important;
+			}
+
 			body.scpa-panel-open {
 				--scpa-panel-width: 420px;
 				overflow-x: hidden;
@@ -1541,7 +1779,7 @@
 			#scpa-toolbar {
 				display: flex;
 				align-items: center;
-				justify-content: flex-end;
+				justify-content: space-between;
 				gap: 10px;
 				min-height: 52px;
 				margin: 8px 0 12px;
@@ -1557,11 +1795,19 @@
 				box-shadow: none;
 			}
 
+			.scpa-toolbar-left,
 			.scpa-toolbar-actions {
 				display: flex;
 				align-items: center;
-				justify-content: flex-end;
 				gap: 10px;
+			}
+
+			.scpa-toolbar-left {
+				justify-content: flex-start;
+			}
+
+			.scpa-toolbar-actions {
+				justify-content: flex-end;
 				margin-left: auto;
 			}
 
@@ -1820,6 +2066,95 @@
 				border-color: var(--scpa-action);
 				background: var(--scpa-surface);
 				outline: 3px solid rgba(50, 100, 120, 0.16);
+			}
+
+			.scpa-queue-actions {
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+				padding: 10px;
+				border: 1px solid var(--scpa-line);
+				border-radius: var(--scpa-radius-card);
+				background: var(--scpa-surface);
+				box-shadow: var(--scpa-shadow-sm);
+			}
+
+			.scpa-queue-actions[hidden] {
+				display: none;
+			}
+
+			.scpa-queue-row {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 7px;
+			}
+
+			.scpa-queue-btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				flex-direction: column;
+				gap: 1px;
+				min-height: 40px;
+				padding: 5px 8px;
+				border: 1px solid var(--scpa-queue-border);
+				border-radius: var(--scpa-radius-button);
+				background: var(--scpa-queue-bg);
+				color: var(--scpa-queue-ink);
+				font: inherit;
+				font-size: 12px;
+				font-weight: 700;
+				line-height: 1.2;
+				text-align: center;
+				cursor: pointer;
+				transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+			}
+
+			.scpa-queue-prefix,
+			.scpa-queue-name {
+				display: block;
+				width: 100%;
+				white-space: nowrap;
+			}
+
+			.scpa-queue-prefix {
+				font-size: 10px;
+				font-weight: 800;
+				text-transform: uppercase;
+			}
+
+			.scpa-queue-name {
+				font-size: 12px;
+			}
+
+			.scpa-queue-btn:hover {
+				background: var(--scpa-queue-hover);
+				border-color: var(--scpa-queue-ink);
+			}
+
+			.scpa-queue-btn[hidden] {
+				display: none;
+			}
+
+			.scpa-queue-yellow {
+				--scpa-queue-bg: var(--scpa-c-amber-50);
+				--scpa-queue-hover: #f6e5bd;
+				--scpa-queue-border: var(--scpa-c-amber-600);
+				--scpa-queue-ink: var(--scpa-c-amber-900);
+			}
+
+			.scpa-queue-red {
+				--scpa-queue-bg: var(--scpa-c-coral-50);
+				--scpa-queue-hover: #f8d9d3;
+				--scpa-queue-border: var(--scpa-c-coral-600);
+				--scpa-queue-ink: var(--scpa-c-coral-900);
+			}
+
+			.scpa-queue-green {
+				--scpa-queue-bg: #e4f1df;
+				--scpa-queue-hover: #d5eacb;
+				--scpa-queue-border: #78a86c;
+				--scpa-queue-ink: #315f2c;
 			}
 
 			.scpa-combo {
@@ -2178,10 +2513,6 @@
 				box-shadow: none;
 			}
 
-			.scpa-cancel-request {
-				width: 100%;
-			}
-
 			.scpa-primary-blue {
 				flex: 1;
 				border: 1px solid var(--scpa-action);
@@ -2365,6 +2696,7 @@
 		injectStyles();
 		buildToolbar();
 		registerMenus();
+		applyNativeDetailsExpansion();
 		maybeAutoOpenAssignPanel();
 		log("Loaded simplified main form workflow.");
 	}
