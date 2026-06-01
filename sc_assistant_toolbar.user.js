@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.16
+// @version      0.1.19
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -23,12 +23,14 @@
 
 /* globals GM_info, GM_addStyle, GM_getValue, GM_setValue, GM_registerMenuCommand */
 /* globals nlapiSearchRecord, nlobjSearchFilter, nlobjSearchColumn */
-/* globals nlapiGetFieldValue, nlapiSetFieldValue */
+/* globals nlapiGetFieldValue, nlapiSetFieldValue, nlapiGetUser */
 
 (function () {
 	"use strict";
 
 	const SCRIPT_NAME = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.name : "SC Request Push Panel";
+	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.19";
+	const TOOLBAR_NAME = "SCAI CrewMatch";
 	const LOG_PREFIX = `${SCRIPT_NAME} >>`;
 	const CACHE_KEY = "sc_assistant_toolbar_people_cache_v1";
 	const CACHE_TS_KEY = "sc_assistant_toolbar_people_cache_ts_v1";
@@ -88,6 +90,7 @@
 	};
 
 	const STATUS = {
+		hold: 3,
 		staffed: 2,
 		cancelled: 4,
 		engagementCancelled: 5,
@@ -953,11 +956,19 @@
 
 		const toolbar = h("div", { id: "scpa-toolbar", class: "scpa-toolbar" }, [
 			h("div", { class: "scpa-toolbar-left" }, [
+				h("div", { class: "scpa-toolbar-brand", "aria-label": `${TOOLBAR_NAME} version ${SCRIPT_VERSION}` }, [
+					h("span", { class: "scpa-toolbar-name", text: TOOLBAR_NAME }),
+					h("span", { class: "scpa-toolbar-version", text: `v${SCRIPT_VERSION}` }),
+				]),
+				h("span", { class: "scpa-toolbar-separator", "aria-hidden": "true", text: "|" }),
 				h("button", { class: "scpa-toolbar-btn scpa-toolbar-icon-btn scpa-btn-ghost", type: "button", id: "scpa-open-settings", title: "Settings", "aria-label": "Settings" }, [
 					icon("settings"),
 				]),
 			]),
 			h("div", { class: "scpa-toolbar-actions" }, [
+				h("button", { class: "scpa-toolbar-btn scpa-hold", type: "button", id: "scpa-hold-request" }, [
+					"On Hold",
+				]),
 				h("button", { class: "scpa-toolbar-btn scpa-cancel", type: "button", id: "scpa-cancel-request" }, [
 					"Cancel request",
 				]),
@@ -981,6 +992,7 @@
 
 		toolbar.querySelector("#scpa-open-assign").addEventListener("click", () => togglePanel("assign"));
 		toolbar.querySelector("#scpa-open-settings").addEventListener("click", () => togglePanel("settings"));
+		toolbar.querySelector("#scpa-hold-request").addEventListener("click", holdRequest);
 		toolbar.querySelector("#scpa-cancel-request").addEventListener("click", cancelRequest);
 	}
 
@@ -1463,6 +1475,23 @@
 		};
 	}
 
+	function resolveCurrentUserRosterPerson() {
+		if (typeof nlapiGetUser !== "function") {
+			return null;
+		}
+		const currentUserId = String(nlapiGetUser() || "");
+		if (!currentUserId) {
+			return null;
+		}
+		try {
+			const matches = fetchConfiguredRosterPeople([currentUserId]);
+			return matches[0] || null;
+		} catch (error) {
+			warn("Could not resolve current user roster record", error);
+			return null;
+		}
+	}
+
 	function setGeneratedAddendum(assignee) {
 		if (!ui.detailsAdd || (ui.detailsAdd.getValue() && ui.detailsAdd.textarea.dataset.generated !== "1")) {
 			return;
@@ -1588,6 +1617,25 @@
 		nsSet(fieldId, `${text}${current}`);
 	}
 
+	function holdRequest() {
+		try {
+			const currentUser = resolveCurrentUserRosterPerson();
+			nsSet(FIELDS.requestStatus, STATUS.hold);
+			nsSet(FIELDS.lead, "F");
+			if (currentUser) {
+				nsSet(FIELDS.assignee, currentUser.value);
+				if (ui.assignee) {
+					ui.assignee.selectOption(currentUser, true);
+				}
+				reportToolbarActionResult(`Marked request On Hold and assigned to ${currentUser.name || currentUser.label}. Save the record when ready.`, "success");
+				return;
+			}
+			reportToolbarActionResult("Marked request On Hold. I could not resolve your roster record, so Assign To was not changed.", "info");
+		} catch (error) {
+			reportToolbarActionResult(error.message || String(error), "error");
+		}
+	}
+
 	function cancelRequest() {
 		if (!window.confirm("Mark this SC Request as cancelled? Changes will be applied to the form but not saved until you save the record.")) {
 			return;
@@ -1598,13 +1646,13 @@
 			nsSet(FIELDS.requestStatus, STATUS.cancelled);
 			nsSet(FIELDS.engagementStatus, STATUS.engagementCancelled);
 			nsSet(FIELDS.lead, "F");
-			reportCancelResult("Marked request cancelled on the NetSuite form. Save the record when ready.", "success");
+			reportToolbarActionResult("Marked request cancelled on the NetSuite form. Save the record when ready.", "success");
 		} catch (error) {
-			reportCancelResult(error.message || String(error), "error");
+			reportToolbarActionResult(error.message || String(error), "error");
 		}
 	}
 
-	function reportCancelResult(message, type) {
+	function reportToolbarActionResult(message, type) {
 		if (assignPanel && activePanel === "assign") {
 			setPanelStatus(assignPanel, message, type);
 			return;
@@ -1804,6 +1852,33 @@
 
 			.scpa-toolbar-left {
 				justify-content: flex-start;
+			}
+
+			.scpa-toolbar-brand {
+				display: inline-flex;
+				align-items: baseline;
+				gap: 7px;
+				min-width: 0;
+				color: var(--scpa-ink);
+				white-space: nowrap;
+			}
+
+			.scpa-toolbar-name {
+				font-size: 14px;
+				font-weight: 750;
+			}
+
+			.scpa-toolbar-version {
+				color: var(--scpa-muted);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0;
+			}
+
+			.scpa-toolbar-separator {
+				color: var(--scpa-subtle);
+				font-size: 18px;
+				line-height: 1;
 			}
 
 			.scpa-toolbar-actions {
@@ -2513,6 +2588,19 @@
 				box-shadow: none;
 			}
 
+			.scpa-hold {
+				border: 1px solid var(--scpa-c-amber-600);
+				background: var(--scpa-c-amber-50);
+				color: var(--scpa-c-amber-900);
+			}
+
+			.scpa-hold:hover {
+				background: #f6e5bd;
+				border-color: var(--scpa-c-amber-900);
+				color: var(--scpa-c-amber-900);
+				box-shadow: none;
+			}
+
 			.scpa-primary-blue {
 				flex: 1;
 				border: 1px solid var(--scpa-action);
@@ -2674,6 +2762,10 @@
 				#scpa-toolbar {
 					flex-wrap: wrap;
 					padding: 8px;
+				}
+
+				.scpa-toolbar-left {
+					flex: 1 1 100%;
 				}
 
 				#scpa-panel-slot.scpa-open {
