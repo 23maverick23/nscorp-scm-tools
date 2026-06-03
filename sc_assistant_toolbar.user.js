@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.19
+// @version      0.1.20
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -23,13 +23,13 @@
 
 /* globals GM_info, GM_addStyle, GM_getValue, GM_setValue, GM_registerMenuCommand */
 /* globals nlapiSearchRecord, nlobjSearchFilter, nlobjSearchColumn */
-/* globals nlapiGetFieldValue, nlapiSetFieldValue, nlapiGetUser */
+/* globals nlapiGetFieldValue, nlapiGetFieldText, nlapiSetFieldValue, nlapiGetUser, nlapiGetRecordId */
 
 (function () {
 	"use strict";
 
 	const SCRIPT_NAME = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.name : "SC Request Push Panel";
-	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.19";
+	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.20";
 	const TOOLBAR_NAME = "SCAI CrewMatch";
 	const LOG_PREFIX = `${SCRIPT_NAME} >>`;
 	const CACHE_KEY = "sc_assistant_toolbar_people_cache_v1";
@@ -87,6 +87,12 @@
 		crossVertical: "custrecord_screq_cross_vertical",
 		deliverable: "custrecord_screq_engmnt_deliverable",
 		complexFlag: "custrecord_sc_complex_flag",
+		salesRep: "custrecord_screq_opp_salesreproster",
+		salesRepEmail: "custrecord_screq_opp_salesreproster.custrecord_emproster_email",
+		requester: "custrecord_screq_requestor",
+		requesterEmail: "custrecord_screq_requestor.custrecord_emproster_email",
+		recordId: "recordid",
+		company: "custrecord_screq_opp_company",
 	};
 
 	const STATUS = {
@@ -100,6 +106,8 @@
 		plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
 		settings:
 			'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.2.37.4.69.6 1H20a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-.5 1Z"/></svg>',
+		mail:
+			'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>',
 		chevron: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
 		x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
 	};
@@ -222,6 +230,19 @@
 			return value === null || value === undefined ? fallback : value;
 		} catch (error) {
 			warn(`Could not read field ${fieldId}`, error);
+			return fallback;
+		}
+	}
+
+	function nsGetText(fieldId, fallback = "") {
+		try {
+			if (typeof nlapiGetFieldText !== "function") {
+				return fallback;
+			}
+			const value = nlapiGetFieldText(fieldId);
+			return value === null || value === undefined ? fallback : value;
+		} catch (error) {
+			warn(`Could not read field text ${fieldId}`, error);
 			return fallback;
 		}
 	}
@@ -964,6 +985,9 @@
 				h("button", { class: "scpa-toolbar-btn scpa-toolbar-icon-btn scpa-btn-ghost", type: "button", id: "scpa-open-settings", title: "Settings", "aria-label": "Settings" }, [
 					icon("settings"),
 				]),
+				h("button", { class: "scpa-toolbar-btn scpa-toolbar-icon-btn scpa-btn-ghost", type: "button", id: "scpa-compose-email", title: "Email requester and sales rep", "aria-label": "Email requester and sales rep" }, [
+					icon("mail"),
+				]),
 			]),
 			h("div", { class: "scpa-toolbar-actions" }, [
 				h("button", { class: "scpa-toolbar-btn scpa-hold", type: "button", id: "scpa-hold-request" }, [
@@ -992,6 +1016,7 @@
 
 		toolbar.querySelector("#scpa-open-assign").addEventListener("click", () => togglePanel("assign"));
 		toolbar.querySelector("#scpa-open-settings").addEventListener("click", () => togglePanel("settings"));
+		toolbar.querySelector("#scpa-compose-email").addEventListener("click", openSupportEmail);
 		toolbar.querySelector("#scpa-hold-request").addEventListener("click", holdRequest);
 		toolbar.querySelector("#scpa-cancel-request").addEventListener("click", cancelRequest);
 	}
@@ -1650,6 +1675,123 @@
 		} catch (error) {
 			reportToolbarActionResult(error.message || String(error), "error");
 		}
+	}
+
+	function openSupportEmail() {
+		try {
+			const draft = buildSupportEmailDraft();
+			if (!draft.recipients.length) {
+				throw new Error("Could not find a Sales Rep or Requester email address on this request.");
+			}
+			const composeUrl = buildOutlookComposeUrl(draft);
+			const opened = window.open(composeUrl, "_blank");
+			if (opened) {
+				opened.opener = null;
+			}
+			if (!opened) {
+				window.location.href = composeUrl;
+			}
+		} catch (error) {
+			reportToolbarActionResult(error.message || String(error), "error");
+		}
+	}
+
+	function buildSupportEmailDraft() {
+		const requestId = getRequestId();
+		const company = getRequestCompany();
+		return {
+			recipients: uniqueEmailRecipients([
+				getRosterEmail(FIELDS.salesRepEmail, FIELDS.salesRep),
+				getRosterEmail(FIELDS.requesterEmail, FIELDS.requester),
+			]),
+			subject: `Req ${requestId || "Unknown"} | SCAI Support for ${company || "Unknown Company"}`,
+		};
+	}
+
+	function getRosterEmail(joinedEmailFieldId, rosterFieldId) {
+		const joinedEmail = nsGet(joinedEmailFieldId);
+		if (joinedEmail) {
+			return joinedEmail;
+		}
+		return findRosterEmail(nsGet(rosterFieldId));
+	}
+
+	function findRosterEmail(rosterId) {
+		if (!rosterId) {
+			return "";
+		}
+		try {
+			const results = nsSearch("customrecord_emproster", [
+				new nlobjSearchFilter("internalid", null, "anyof", rosterId),
+			], [
+				makeColumn("custrecord_emproster_email"),
+			]);
+			const match = results[0];
+			return match ? String(match.getValue("custrecord_emproster_email") || "") : "";
+		} catch (error) {
+			warn(`Could not resolve roster email for ${rosterId}`, error);
+			return "";
+		}
+	}
+
+	function uniqueEmailRecipients(values) {
+		const seen = new Set();
+		const recipients = [];
+		values.flatMap(splitEmailRecipients).forEach((recipient) => {
+			const key = emailRecipientKey(recipient);
+			if (!key || seen.has(key)) {
+				return;
+			}
+			seen.add(key);
+			recipients.push(recipient);
+		});
+		return recipients;
+	}
+
+	function splitEmailRecipients(value) {
+		return String(value || "")
+			.split(/[;,]+/)
+			.map((item) => item.trim())
+			.filter(Boolean);
+	}
+
+	function emailRecipientKey(recipient) {
+		const match = String(recipient || "").match(/<([^>]+)>/);
+		return (match ? match[1] : recipient).trim().toLowerCase();
+	}
+
+	function getRequestId() {
+		const fieldValue = String(nsGet(FIELDS.recordId) || "").trim();
+		if (fieldValue) {
+			return fieldValue;
+		}
+		try {
+			if (typeof nlapiGetRecordId === "function") {
+				const recordId = nlapiGetRecordId();
+				if (recordId) {
+					return String(recordId);
+				}
+			}
+		} catch (error) {
+			warn("Could not read current record id", error);
+		}
+		try {
+			const url = new URL(window.location.href);
+			return url.searchParams.get("id") || url.searchParams.get("custparam_record_id") || "";
+		} catch (error) {
+			return "";
+		}
+	}
+
+	function getRequestCompany() {
+		return String(nsGetText(FIELDS.company) || nsGet(FIELDS.company) || "").trim();
+	}
+
+	function buildOutlookComposeUrl({ recipients, subject }) {
+		const url = new URL("https://outlook.office.com/mail/deeplink/compose");
+		url.searchParams.set("to", recipients.join(";"));
+		url.searchParams.set("subject", subject);
+		return url.toString();
 	}
 
 	function reportToolbarActionResult(message, type) {
