@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.20
+// @version      0.1.21
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -29,7 +29,7 @@
 	"use strict";
 
 	const SCRIPT_NAME = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.name : "SC Request Push Panel";
-	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.20";
+	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.21";
 	const TOOLBAR_NAME = "SCAI CrewMatch";
 	const LOG_PREFIX = `${SCRIPT_NAME} >>`;
 	const CACHE_KEY = "sc_assistant_toolbar_people_cache_v1";
@@ -91,7 +91,6 @@
 		salesRepEmail: "custrecord_screq_opp_salesreproster.custrecord_emproster_email",
 		requester: "custrecord_screq_requestor",
 		requesterEmail: "custrecord_screq_requestor.custrecord_emproster_email",
-		recordId: "recordid",
 		company: "custrecord_screq_opp_company",
 	};
 
@@ -1683,14 +1682,7 @@
 			if (!draft.recipients.length) {
 				throw new Error("Could not find a Sales Rep or Requester email address on this request.");
 			}
-			const composeUrl = buildOutlookComposeUrl(draft);
-			const opened = window.open(composeUrl, "_blank");
-			if (opened) {
-				opened.opener = null;
-			}
-			if (!opened) {
-				window.location.href = composeUrl;
-			}
+			window.location.href = buildMailtoUrl(draft);
 		} catch (error) {
 			reportToolbarActionResult(error.message || String(error), "error");
 		}
@@ -1756,15 +1748,15 @@
 	}
 
 	function emailRecipientKey(recipient) {
+		return extractEmailAddress(recipient).toLowerCase();
+	}
+
+	function extractEmailAddress(recipient) {
 		const match = String(recipient || "").match(/<([^>]+)>/);
-		return (match ? match[1] : recipient).trim().toLowerCase();
+		return (match ? match[1] : recipient).trim();
 	}
 
 	function getRequestId() {
-		const fieldValue = String(nsGet(FIELDS.recordId) || "").trim();
-		if (fieldValue) {
-			return fieldValue;
-		}
 		try {
 			if (typeof nlapiGetRecordId === "function") {
 				const recordId = nlapiGetRecordId();
@@ -1775,23 +1767,16 @@
 		} catch (error) {
 			warn("Could not read current record id", error);
 		}
-		try {
-			const url = new URL(window.location.href);
-			return url.searchParams.get("id") || url.searchParams.get("custparam_record_id") || "";
-		} catch (error) {
-			return "";
-		}
+		return "";
 	}
 
 	function getRequestCompany() {
 		return String(nsGetText(FIELDS.company) || nsGet(FIELDS.company) || "").trim();
 	}
 
-	function buildOutlookComposeUrl({ recipients, subject }) {
-		const url = new URL("https://outlook.office.com/mail/deeplink/compose");
-		url.searchParams.set("to", recipients.join(";"));
-		url.searchParams.set("subject", subject);
-		return url.toString();
+	function buildMailtoUrl({ recipients, subject }) {
+		const to = recipients.map(extractEmailAddress).filter(Boolean).map(encodeURIComponent).join(",");
+		return `mailto:${to}?subject=${encodeURIComponent(subject)}`;
 	}
 
 	function reportToolbarActionResult(message, type) {
