@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.21
+// @version      0.1.22
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -29,7 +29,7 @@
 	"use strict";
 
 	const SCRIPT_NAME = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.name : "SC Request Push Panel";
-	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.21";
+	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.22";
 	const TOOLBAR_NAME = "SCAI CrewMatch";
 	const LOG_PREFIX = `${SCRIPT_NAME} >>`;
 	const CACHE_KEY = "sc_assistant_toolbar_people_cache_v1";
@@ -256,6 +256,15 @@
 
 	function getInitials() {
 		return getStoredValue(INITIALS_KEY, "[SC Mgr]");
+	}
+
+	function getParentheticalInitials() {
+		return String(getInitials() || "")
+			.trim()
+			.replace(/^\[/, "")
+			.replace(/\]$/, "")
+			.replace(/^\(/, "")
+			.replace(/\)$/, "");
 	}
 
 	function getManagerNotesTemplate() {
@@ -1664,13 +1673,22 @@
 		if (!window.confirm("Mark this SC Request as cancelled? Changes will be applied to the form but not saved until you save the record.")) {
 			return;
 		}
-		const comment = `SC Request cancelled by SC Manager (${getInitials()}). \nPlease create a new request if needed.\n---\n\n`;
+		const currentUser = resolveCurrentUserRosterPerson();
+		const comment = `SC Request cancelled by SC Manager (${getParentheticalInitials()}). \nPlease create a new request if needed.\n---\n\n`;
 		try {
 			prependField(FIELDS.details, comment);
 			nsSet(FIELDS.requestStatus, STATUS.cancelled);
 			nsSet(FIELDS.engagementStatus, STATUS.engagementCancelled);
 			nsSet(FIELDS.lead, "F");
-			reportToolbarActionResult("Marked request cancelled on the NetSuite form. Save the record when ready.", "success");
+			if (currentUser) {
+				nsSet(FIELDS.assignee, currentUser.value);
+				if (ui.assignee) {
+					ui.assignee.selectOption(currentUser, true);
+				}
+				reportToolbarActionResult(`Marked request cancelled and assigned to ${currentUser.name || currentUser.label}. Save the record when ready.`, "success");
+				return;
+			}
+			reportToolbarActionResult("Marked request cancelled. I could not resolve your roster record, so Assign To was not changed.", "info");
 		} catch (error) {
 			reportToolbarActionResult(error.message || String(error), "error");
 		}
