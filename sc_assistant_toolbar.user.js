@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.24
+// @version      0.1.25
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -29,7 +29,7 @@
 	"use strict";
 
 	const SCRIPT_NAME = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.name : "SC Request Push Panel";
-	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.24";
+	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.25";
 	const TOOLBAR_NAME = "SCAI CrewMatch";
 	const LOG_PREFIX = `${SCRIPT_NAME} >>`;
 	const CACHE_KEY = "sc_assistant_toolbar_people_cache_v1";
@@ -1642,11 +1642,11 @@
 
 	function buildMailtoUrl({ recipients, subject, body }) {
 		const to = recipients.map(extractEmailAddress).filter(Boolean).map(encodeURIComponent).join(",");
-		const query = new URLSearchParams({ subject: subject || "" });
+		const query = [`subject=${encodeURIComponent(subject || "")}`];
 		if (body) {
-			query.set("body", body);
+			query.push(`body=${encodeURIComponent(body)}`);
 		}
-		return `mailto:${to}?${query.toString()}`;
+		return `mailto:${to}?${query.join("&")}`;
 	}
 
 	function reportToolbarActionResult(message, type) {
