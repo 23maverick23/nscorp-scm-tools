@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SC Assistant Toolbar
 // @namespace    nscorp-scm-tools
-// @version      0.1.22
+// @version      0.1.24
 // @description  Lightweight main-form assignment toolbar for NetSuite SC Request forms.
 // @icon         https://www.google.com/s2/favicons?domain=netsuite.com
 // @tag          productivity
@@ -29,7 +29,7 @@
 	"use strict";
 
 	const SCRIPT_NAME = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.name : "SC Request Push Panel";
-	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.22";
+	const SCRIPT_VERSION = typeof GM_info !== "undefined" && GM_info.script ? GM_info.script.version : "0.1.24";
 	const TOOLBAR_NAME = "SCAI CrewMatch";
 	const LOG_PREFIX = `${SCRIPT_NAME} >>`;
 	const CACHE_KEY = "sc_assistant_toolbar_people_cache_v1";
@@ -42,39 +42,10 @@
 	const AUTO_OPEN_ENABLED_KEY = "sc_assistant_toolbar_auto_open_enabled_v1";
 	const AUTO_OPEN_URL_KEY = "sc_assistant_toolbar_auto_open_url_v1";
 	const EXPAND_DETAILS_ENABLED_KEY = "sc_assistant_toolbar_expand_details_enabled_v1";
-	const QUEUE_VISIBILITY_KEY = "sc_assistant_toolbar_queue_visibility_v1";
 	const DEFAULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 	const DEFAULT_EMPLOYEE_IDS = [];
 	const DEFAULT_MANAGER_NOTES_TEMPLATE = "{date} - Staffed deal {initials}";
 	const DEFAULT_APPROVED_HASHTAGS = "#emg";
-	const DEFAULT_QUEUE_VISIBILITY = {
-		innovation: true,
-		coe: true,
-		lab: true,
-	};
-	const QUEUE_DEFINITIONS = [
-		{
-			key: "innovation",
-			label: "SCAI Innovation",
-			tone: "yellow",
-			assigneeId: "71069",
-			assigneeName: "Joe Friedman",
-		},
-		{
-			key: "coe",
-			label: "SCAI CoE",
-			tone: "red",
-			assigneeId: "71347",
-			assigneeName: "Ryan Morrissey",
-		},
-		{
-			key: "lab",
-			label: "SCAI Lab",
-			tone: "green",
-			assigneeId: "952626",
-			assigneeName: "Luke Bradley",
-		},
-	];
 
 	const FIELDS = {
 		requestStatus: "custrecord_screq_status",
@@ -84,7 +55,6 @@
 		details: "custrecord_screq_details",
 		managerNotes: "custrecord_screq_scmanager_notes",
 		hashtags: "custrecord_screq_hashtags",
-		crossVertical: "custrecord_screq_cross_vertical",
 		deliverable: "custrecord_screq_engmnt_deliverable",
 		complexFlag: "custrecord_sc_complex_flag",
 		salesRep: "custrecord_screq_opp_salesreproster",
@@ -294,17 +264,6 @@
 		return stored === true || stored === "true";
 	}
 
-	function getQueueVisibility() {
-		const stored = getStoredValue(QUEUE_VISIBILITY_KEY, DEFAULT_QUEUE_VISIBILITY);
-		if (!stored || typeof stored !== "object" || Array.isArray(stored)) {
-			return { ...DEFAULT_QUEUE_VISIBILITY };
-		}
-		return {
-			...DEFAULT_QUEUE_VISIBILITY,
-			...stored,
-		};
-	}
-
 	function getEmployeeIdsText() {
 		const stored = getStoredValue(EMPLOYEE_IDS_KEY, DEFAULT_EMPLOYEE_IDS.join(", "));
 		return Array.isArray(stored) ? stored.join(", ") : String(stored || "");
@@ -377,15 +336,6 @@
 				.map(normalizeHashtag)
 				.filter(Boolean),
 		);
-	}
-
-	function mergeHashtags(value, nextTag) {
-		const tags = parseHashtags(value);
-		const tag = normalizeHashtag(nextTag);
-		if (tag && !tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) {
-			tags.unshift(tag);
-		}
-		return tags.join(",");
 	}
 
 	function normalizeHashtag(value) {
@@ -493,11 +443,11 @@
 			const cachedAt = Number(getStoredValue(CACHE_TS_KEY, 0));
 			const cachedIds = String(getStoredValue(CACHE_IDS_KEY, ""));
 			if (!forceRefresh && Array.isArray(cached) && cachedAt && cachedIds === idsKey && Date.now() - cachedAt < DEFAULT_CACHE_TTL_MS) {
-				return cached;
+				return applyEmployeeLocationOverrides(cached);
 			}
 
 			await afterPaint();
-			const people = fetchConfiguredRosterPeople(employeeIds);
+			const people = applyEmployeeLocationOverrides(fetchConfiguredRosterPeople(employeeIds));
 			setStoredValue(CACHE_KEY, people);
 			setStoredValue(CACHE_TS_KEY, Date.now());
 			setStoredValue(CACHE_IDS_KEY, idsKey);
@@ -577,6 +527,19 @@
 			name,
 			location,
 		};
+	}
+
+	function applyEmployeeLocationOverrides(people) {
+		return people.map((person) => {
+			if (person.location !== "US-TX" || !/^Gabriel Cunha$/i.test(person.name.trim())) {
+				return person;
+			}
+			return {
+				...person,
+				location: "US-CA",
+				label: `${person.name} (US-CA)`,
+			};
+		});
 	}
 
 	function configuredRosterOrder(person, order) {
@@ -946,38 +909,6 @@
 		};
 	}
 
-	function createQueueActions() {
-		const root = h("div", { class: "scpa-queue-actions" }, [
-			h("div", { class: "scpa-section-label", text: "Reassign Queue" }),
-		]);
-		const row = h("div", { class: "scpa-queue-row" });
-		const buttons = {};
-
-		QUEUE_DEFINITIONS.forEach((queue) => {
-			const [prefix, ...nameParts] = queue.label.split(/\s+/);
-			const button = h(
-				"button",
-				{
-					class: `scpa-queue-btn scpa-queue-${queue.tone}`,
-					type: "button",
-					"data-queue": queue.key,
-				},
-				[
-					h("span", { class: "scpa-queue-prefix", text: prefix }),
-					h("span", { class: "scpa-queue-name", text: nameParts.join(" ") }),
-				],
-			);
-			button.addEventListener("click", () => {
-				reassignToQueue(queue);
-			});
-			buttons[queue.key] = button;
-			row.appendChild(button);
-		});
-
-		root.appendChild(row);
-		return { root, buttons };
-	}
-
 	function buildToolbar() {
 		if (document.getElementById("scpa-toolbar")) {
 			return;
@@ -1098,7 +1029,6 @@
 			},
 			onClear: clearGeneratedAssigneeText,
 		});
-		ui.queueActions = createQueueActions();
 		ui.detailsAdd = createTextarea({
 			label: "SC Request Details Addendum",
 			placeholder: "Text to prepend to the beginning of the SC Request Details on Save...",
@@ -1123,7 +1053,6 @@
 		const body = h("div", { class: "scpa-panel-body" }, [
 			panelLoading(),
 			panelStatus(),
-			ui.queueActions.root,
 			ui.assignee.root,
 			ui.detailsAdd.root,
 			h("div", { class: "scpa-divider" }),
@@ -1159,10 +1088,6 @@
 			placeholder: currentAutoOpenPattern(),
 		});
 		ui.settingsExpandDetails = createToggle({ label: "Expand native Request Details field", checked: true });
-		ui.settingsQueueVisibility = {};
-		QUEUE_DEFINITIONS.forEach((queue) => {
-			ui.settingsQueueVisibility[queue.key] = createToggle({ label: `Show ${queue.label} queue button`, checked: true });
-		});
 		ui.settingsManagerNotesTemplate = createTextarea({
 			label: "SC Manager Notes Template",
 			placeholder: "{date} - Staffed deal {initials}",
@@ -1192,8 +1117,6 @@
 			ui.settingsAutoOpen.root,
 			ui.settingsAutoOpenUrl.root,
 			ui.settingsExpandDetails.root,
-			h("div", { class: "scpa-section-label", text: "Queue Buttons" }),
-			...QUEUE_DEFINITIONS.map((queue) => ui.settingsQueueVisibility[queue.key].root),
 			ui.settingsManagerNotesTemplate.root,
 			ui.settingsApprovedHashtags.root,
 			ui.settingsEmployeeIds.root,
@@ -1277,7 +1200,6 @@
 
 	function hydrateAssignPanel(runId) {
 		setPanelStatus(assignPanel, "");
-		updateQueueActionsVisibility();
 		ui.hashtags.setOptions(getApprovedHashtags());
 		ui.hashtags.setValue(nsGet(FIELDS.hashtags));
 		ui.assignee.setLoading("Loading configured assignees...");
@@ -1311,26 +1233,6 @@
 			});
 	}
 
-	function updateQueueActionsVisibility() {
-		if (!ui.queueActions) {
-			return;
-		}
-		const visibility = getQueueVisibility();
-		let visibleCount = 0;
-		QUEUE_DEFINITIONS.forEach((queue) => {
-			const button = ui.queueActions.buttons[queue.key];
-			if (!button) {
-				return;
-			}
-			const isVisible = visibility[queue.key] !== false;
-			button.hidden = !isVisible;
-			if (isVisible) {
-				visibleCount += 1;
-			}
-		});
-		ui.queueActions.root.hidden = visibleCount === 0;
-	}
-
 	function hydrateSettingsPanel(runId) {
 		if (activePanel !== "settings" || runId !== settingsHydrationRun) {
 			return;
@@ -1339,10 +1241,6 @@
 		ui.settingsAutoOpen.setValue(getAutoOpenEnabled());
 		ui.settingsAutoOpenUrl.setValue(getAutoOpenUrlPattern());
 		ui.settingsExpandDetails.setValue(getExpandDetailsEnabled());
-		const queueVisibility = getQueueVisibility();
-		QUEUE_DEFINITIONS.forEach((queue) => {
-			ui.settingsQueueVisibility[queue.key].setValue(queueVisibility[queue.key] !== false);
-		});
 		ui.settingsManagerNotesTemplate.setValue(getManagerNotesTemplate());
 		ui.settingsApprovedHashtags.setValue(getApprovedHashtagsText());
 		ui.settingsEmployeeIds.setValue(getEmployeeIdsText());
@@ -1384,10 +1282,6 @@
 			? (ui.settingsAutoOpenUrl.getValue().trim() || currentAutoOpenPattern())
 			: ui.settingsAutoOpenUrl.getValue().trim();
 		const expandDetailsEnabled = ui.settingsExpandDetails.getValue();
-		const queueVisibility = {};
-		QUEUE_DEFINITIONS.forEach((queue) => {
-			queueVisibility[queue.key] = ui.settingsQueueVisibility[queue.key].getValue();
-		});
 		const managerNotesTemplate = ui.settingsManagerNotesTemplate.getValue() || DEFAULT_MANAGER_NOTES_TEMPLATE;
 		const approvedHashtagsText = parseHashtags(ui.settingsApprovedHashtags.getValue()).join(", ");
 		const employeeIdsText = parseEmployeeIds(ui.settingsEmployeeIds.getValue()).join(", ");
@@ -1396,7 +1290,6 @@
 		setStoredValue(AUTO_OPEN_ENABLED_KEY, autoOpenEnabled);
 		setStoredValue(AUTO_OPEN_URL_KEY, autoOpenUrlPattern);
 		setStoredValue(EXPAND_DETAILS_ENABLED_KEY, expandDetailsEnabled);
-		setStoredValue(QUEUE_VISIBILITY_KEY, queueVisibility);
 		setStoredValue(MANAGER_NOTES_TEMPLATE_KEY, managerNotesTemplate);
 		setStoredValue(APPROVED_HASHTAGS_KEY, approvedHashtagsText);
 		setStoredValue(EMPLOYEE_IDS_KEY, employeeIdsText);
@@ -1404,16 +1297,12 @@
 		ui.settingsAutoOpen.setValue(autoOpenEnabled);
 		ui.settingsAutoOpenUrl.setValue(autoOpenUrlPattern);
 		ui.settingsExpandDetails.setValue(expandDetailsEnabled);
-		QUEUE_DEFINITIONS.forEach((queue) => {
-			ui.settingsQueueVisibility[queue.key].setValue(queueVisibility[queue.key]);
-		});
 		ui.settingsManagerNotesTemplate.setValue(managerNotesTemplate);
 		ui.settingsApprovedHashtags.setValue(approvedHashtagsText);
 		ui.settingsEmployeeIds.setValue(employeeIdsText);
 		if (ui.hashtags) {
 			ui.hashtags.setOptions(getApprovedHashtags());
 		}
-		updateQueueActionsVisibility();
 		applyNativeDetailsExpansion();
 		return employeeIdsText;
 	}
@@ -1464,48 +1353,6 @@
 		clearPeopleCache();
 		updateSettingsCacheSummary();
 		setPanelStatus(settingsPanel, "Roster cache cleared.", "info");
-	}
-
-	async function reassignToQueue(queue) {
-		setPanelStatus(assignPanel, "");
-		setPanelLoading(assignPanel, true, `Reassigning to ${queue.label}...`);
-		try {
-			await afterPaint();
-			const assignee = resolveQueueAssignee(queue);
-			const updatedHashtags = mergeHashtags(nsGet(FIELDS.hashtags), "#xvr");
-			nsSet(FIELDS.assignee, assignee.value);
-			nsSet(FIELDS.lead, "F");
-			nsSet(FIELDS.crossVertical, "T");
-			nsSet(FIELDS.hashtags, updatedHashtags);
-			if (ui.assignee) {
-				ui.assignee.selectOption(assignee, true);
-			}
-			if (ui.hashtags) {
-				ui.hashtags.setValue(updatedHashtags);
-			}
-			setPanelStatus(assignPanel, `${queue.label} selected for ${assignee.name || assignee.label}. Save the record when ready.`, "success");
-		} catch (error) {
-			setPanelStatus(assignPanel, error.message || String(error), "error");
-		} finally {
-			setPanelLoading(assignPanel, false);
-		}
-	}
-
-	function resolveQueueAssignee(queue) {
-		try {
-			const matches = fetchConfiguredRosterPeople([queue.assigneeId]);
-			if (matches.length) {
-				return matches[0];
-			}
-		} catch (error) {
-			warn(`Could not resolve queue assignee ${queue.assigneeId}`, error);
-		}
-		return {
-			value: queue.assigneeId,
-			label: queue.assigneeName,
-			name: queue.assigneeName,
-			employeeRecordId: queue.assigneeId,
-		};
 	}
 
 	function resolveCurrentUserRosterPerson() {
@@ -1715,6 +1562,7 @@
 				getRosterEmail(FIELDS.requesterEmail, FIELDS.requester),
 			]),
 			subject: `Req ${requestId || "Unknown"} | SCAI Support for ${company || "Unknown Company"}`,
+			body: String(nsGet(FIELDS.details) || "").trim(),
 		};
 	}
 
@@ -1792,9 +1640,13 @@
 		return String(nsGetText(FIELDS.company) || nsGet(FIELDS.company) || "").trim();
 	}
 
-	function buildMailtoUrl({ recipients, subject }) {
+	function buildMailtoUrl({ recipients, subject, body }) {
 		const to = recipients.map(extractEmailAddress).filter(Boolean).map(encodeURIComponent).join(",");
-		return `mailto:${to}?subject=${encodeURIComponent(subject)}`;
+		const query = new URLSearchParams({ subject: subject || "" });
+		if (body) {
+			query.set("body", body);
+		}
+		return `mailto:${to}?${query.toString()}`;
 	}
 
 	function reportToolbarActionResult(message, type) {
@@ -2286,95 +2138,6 @@
 				border-color: var(--scpa-action);
 				background: var(--scpa-surface);
 				outline: 3px solid rgba(50, 100, 120, 0.16);
-			}
-
-			.scpa-queue-actions {
-				display: flex;
-				flex-direction: column;
-				gap: 8px;
-				padding: 10px;
-				border: 1px solid var(--scpa-line);
-				border-radius: var(--scpa-radius-card);
-				background: var(--scpa-surface);
-				box-shadow: var(--scpa-shadow-sm);
-			}
-
-			.scpa-queue-actions[hidden] {
-				display: none;
-			}
-
-			.scpa-queue-row {
-				display: grid;
-				grid-template-columns: repeat(3, minmax(0, 1fr));
-				gap: 7px;
-			}
-
-			.scpa-queue-btn {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				flex-direction: column;
-				gap: 1px;
-				min-height: 40px;
-				padding: 5px 8px;
-				border: 1px solid var(--scpa-queue-border);
-				border-radius: var(--scpa-radius-button);
-				background: var(--scpa-queue-bg);
-				color: var(--scpa-queue-ink);
-				font: inherit;
-				font-size: 12px;
-				font-weight: 700;
-				line-height: 1.2;
-				text-align: center;
-				cursor: pointer;
-				transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
-			}
-
-			.scpa-queue-prefix,
-			.scpa-queue-name {
-				display: block;
-				width: 100%;
-				white-space: nowrap;
-			}
-
-			.scpa-queue-prefix {
-				font-size: 10px;
-				font-weight: 800;
-				text-transform: uppercase;
-			}
-
-			.scpa-queue-name {
-				font-size: 12px;
-			}
-
-			.scpa-queue-btn:hover {
-				background: var(--scpa-queue-hover);
-				border-color: var(--scpa-queue-ink);
-			}
-
-			.scpa-queue-btn[hidden] {
-				display: none;
-			}
-
-			.scpa-queue-yellow {
-				--scpa-queue-bg: var(--scpa-c-amber-50);
-				--scpa-queue-hover: #f6e5bd;
-				--scpa-queue-border: var(--scpa-c-amber-600);
-				--scpa-queue-ink: var(--scpa-c-amber-900);
-			}
-
-			.scpa-queue-red {
-				--scpa-queue-bg: var(--scpa-c-coral-50);
-				--scpa-queue-hover: #f8d9d3;
-				--scpa-queue-border: var(--scpa-c-coral-600);
-				--scpa-queue-ink: var(--scpa-c-coral-900);
-			}
-
-			.scpa-queue-green {
-				--scpa-queue-bg: #e4f1df;
-				--scpa-queue-hover: #d5eacb;
-				--scpa-queue-border: #78a86c;
-				--scpa-queue-ink: #315f2c;
 			}
 
 			.scpa-combo {
